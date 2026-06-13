@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify Your Account</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f4f4f7; font-family: Arial, sans-serif; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; }
+    .header { background-color: #4f46e5; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #ffffff; margin: 0; font-size: 24px; }
+    .body { padding: 40px; color: #374151; }
+    .body p { line-height: 1.6; margin: 0 0 16px; }
+    .btn { display: inline-block; margin: 24px 0; padding: 14px 32px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; }
+    .footer { padding: 24px 40px; background-color: #f9fafb; text-align: center; color: #6b7280; font-size: 12px; }
+    .footer a { color: #4f46e5; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      {{#if logoUrl}}<img src="{{logoUrl}}" alt="{{companyName}}" height="40" style="margin-bottom:12px;" /><br />{{/if}}
+      <h1>Verify Your Email</h1>
+    </div>
+    <div class="body">
+      <p>Hi {{name}},</p>
+      <p>Thanks for signing up for <strong>{{companyName}}</strong>! Please verify your email address to activate your account.</p>
+      <p style="text-align:center;">
+        <a href="{{verifyUrl}}" class="btn">Verify Email Address</a>
+      </p>
+      <p>This link will expire in 30 minutes. If you didn't create an account, you can safely ignore this email.</p>
+      <p>Need help? Contact us at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a></p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} {{companyName}}. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

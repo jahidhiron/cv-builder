@@ -1,0 +1,11 @@
+{
+  "error": {
+    "queue-stats-not-found": "Queue stats not found",
+    "queues-not-found": "Queues not found"
+  },
+  "success": {
+    "db-health": "Database health status retrieved successful",
+    "queue-stats": "RabbitMQ queue statistics retrieved successful",
+    "queue-list": "RabbitMQ queue list retrieved successful"
+  }
+}

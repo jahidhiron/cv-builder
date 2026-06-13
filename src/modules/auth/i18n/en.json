@@ -1,0 +1,30 @@
+{
+  "error": {
+    "email-exist": "An account with this email already exists",
+    "invalid-credentials": "Invalid email or password",
+    "user-archive": "This account has been deactivated",
+    "user-inactive": "This account is inactive",
+    "user-not-verified": "Please verify your email before signing in",
+    "account-locked": "Your account is temporarily locked due to too many failed login attempts. Please try again later",
+    "user-not-found": "User not found",
+    "invalid-token": "Invalid or expired token",
+    "user-already-verified": "This account is already verified",
+    "invalid-google-token": "Invalid Google ID token",
+    "invalid-refresh-token": "Invalid refresh token",
+    "expired-refresh-token": "Refresh token has expired",
+    "match-old-password": "New password cannot be the same as the current password",
+    "old-password-not-match": "Current password is incorrect",
+    "no-password-set": "No password set for this account. Use Google sign-in or reset your password"
+  },
+  "success": {
+    "signup": "Account created successfully. Please check your email to verify your account",
+    "signin": "Signed in successfully",
+    "refresh-token": "Token refreshed successfully",
+    "logout": "Signed out successfully",
+    "email-verified": "Email verified successfully",
+    "verification-sent": "Verification email sent successfully",
+    "forgot-password-token": "If an account exists with this email, a password reset link has been sent",
+    "password-reset": "Password reset successfully",
+    "change-password": "Password changed successfully"
+  }
+}

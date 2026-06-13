@@ -1,0 +1,50 @@
+{
+  // Editor Configuration
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+
+  // File Settings
+  "files.eol": "\n",
+  "files.encoding": "utf8",
+
+  // Prettier Configuration
+  "prettier.requireConfig": true,
+  "prettier.singleQuote": true,
+  "prettier.trailingComma": "all",
+  "prettier.printWidth": 100,
+  "prettier.semi": true,
+  "prettier.tabWidth": 2,
+  "prettier.useTabs": false,
+
+  // ESLint Configuration
+  "eslint.enable": true,
+  "eslint.validate": ["typescript", "typescriptreact", "javascript", "javascriptreact"],
+
+  // TypeScript Settings
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "typescript.updateImportsOnFileMove.enabled": "always",
+
+  // Terminal Settings
+  "terminal.integrated.defaultProfile.windows": "Command Prompt",
+  "terminal.integrated.scrollback": 5000,
+  "terminal.integrated.fontSize": 14,
+
+  // Project Search & Watcher Exclusions
+  "npm.scriptExplorerExclude": ["test", "lint", "format"],
+  "search.exclude": {
+    "dist": true,
+    "node_modules": true,
+    "coverage": true
+  },
+  "files.watcherExclude": {
+    "**/dist/**": true,
+    "**/node_modules/**": true
+  }
+}

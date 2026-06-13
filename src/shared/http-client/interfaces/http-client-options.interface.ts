@@ -1,0 +1,44 @@
+import type { FactoryProvider, ModuleMetadata } from '@nestjs/common';
+
+export interface HttpClientRetryOptions {
+  /** Number of retry attempts on transient failure. Default: `3`. */
+  count?: number;
+  /** Milliseconds to wait between retries. Default: `1000`. */
+  delay?: number;
+}
+
+export interface HttpClientOptions {
+  /** Base URL prepended to every relative request path. */
+  baseURL?: string;
+  /** Global request timeout in milliseconds. */
+  timeout?: number;
+  /** Headers merged into every outgoing request. */
+  defaultHeaders?: Record<string, string>;
+  /** Retry strategy applied to all requests. */
+  retry?: HttpClientRetryOptions;
+}
+
+/**
+ * Options accepted by {@link HttpClientModule.forRootAsync}.
+ *
+ * Mirrors the NestJS async-options pattern: provide a `useFactory` that
+ * receives injected dependencies and returns an {@link HttpClientOptions} object.
+ *
+ * @example
+ * ```ts
+ * HttpClientModule.forRootAsync({
+ *   imports: [ConfigModule],
+ *   inject: [ConfigService],
+ *   useFactory: (config: ConfigService) => ({
+ *     baseURL: config.get('API_BASE_URL'),
+ *     timeout: config.get<number>('HTTP_TIMEOUT'),
+ *   }),
+ * })
+ * ```
+ */
+export interface HttpClientAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
+  /** Factory function that returns the synchronous or asynchronous configuration object. */
+  useFactory: (...args: any[]) => Promise<object> | object;
+  /** Providers injected into `useFactory` as positional arguments. */
+  inject?: FactoryProvider['inject'];
+}

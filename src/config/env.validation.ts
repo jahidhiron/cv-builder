@@ -110,4 +110,9 @@ export const envValidationSchema = Joi.object({
   MAILGUN_FROM_EMAIL: Joi.string().email().optional().allow('', null),
   MAILGUN_FROM_NAME: Joi.string().optional().allow('', null),
   SUPPORT_EMAIL: Joi.string().email().optional().allow('', null),
+
+  COOKIE_SAME_SITE: Joi.string().valid('lax', 'strict', 'none').default('lax'),
+  COOKIE_PATH: Joi.string().default('/'),
+  COOKIE_REFRESH_PATH: Joi.string().default('/v1/auth'),
+  COOKIE_DOMAIN: Joi.string().optional().allow('', null),
 });

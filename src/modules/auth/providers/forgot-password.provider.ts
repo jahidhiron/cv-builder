@@ -1,9 +1,9 @@
 import { ModuleName } from '@/common/enums';
+import { ConfigService } from '@/config';
 import { TokenType } from '@/modules/auth/enums';
 import { TokenPayload } from '@/modules/auth/interfaces';
 import { CreateTokenProvider } from '@/modules/auth/providers/create-token.provider';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
-import { ConfigService } from '@/config';
+import { UserService } from '@/modules/users/services';
 import { SendEmailParams } from '@/shared/mail/interfaces';
 import { MailService } from '@/shared/mail/mail.service';
 import { ErrorResponse } from '@/shared/response';
@@ -13,7 +13,7 @@ import { ForgotPasswordDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class ForgotPasswordProvider {
   constructor(
-    private readonly userRepo: UserRepository,
+    private readonly userService: UserService,
     private readonly errorResponse: ErrorResponse,
     private readonly createToken: CreateTokenProvider,
     private readonly configService: ConfigService,
@@ -21,7 +21,7 @@ export class ForgotPasswordProvider {
   ) {}
 
   async execute(dto: ForgotPasswordDto): Promise<void> {
-    const user = await this.userRepo.findOne({ email: dto.email });
+    const user = await this.userService.findByEmail(dto.email);
     if (!user) {
       await this.errorResponse.notFound({ module: ModuleName.Auth, key: 'user-not-found' });
     }

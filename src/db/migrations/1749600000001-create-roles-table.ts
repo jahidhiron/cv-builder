@@ -10,6 +10,8 @@ export class CreateRolesTable1749600000001 implements MigrationInterface {
         "name"        VARCHAR(255)  UNIQUE NOT NULL,
         "key"         VARCHAR(255)  UNIQUE NOT NULL,
         "description" TEXT,
+        "created_by"  BIGINT,
+        "updated_by"  BIGINT,
         "is_deleted"  BOOLEAN       NOT NULL DEFAULT FALSE,
         "deleted_at"  TIMESTAMPTZ,
         "created_at"  TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,

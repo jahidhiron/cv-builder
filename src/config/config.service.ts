@@ -1,4 +1,5 @@
 import { AppConfigService } from '@/config/app';
+import { CookieConfigService } from '@/config/cookie';
 import { DbConfigService } from '@/config/db';
 import { GoogleConfigService } from '@/config/google';
 import { JwtConfigService } from '@/config/jwt';
@@ -21,5 +22,6 @@ export class ConfigService {
     public readonly google: GoogleConfigService,
     public readonly redis: RedisConfigService,
     public readonly mail: MailConfigService,
+    public readonly cookie: CookieConfigService,
   ) {}
 }

@@ -12,6 +12,7 @@ import { AppModule } from '@/modules/app/app.module';
 import { SocketIoAdapter } from '@/realtime/adapters';
 import { VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import cookieParser = require('cookie-parser');
 import * as fs from 'fs';
 import * as path from 'path';
 import * as winston from 'winston';
@@ -41,6 +42,7 @@ async function bootstrap() {
   app.useLogger(logger);
 
   // Middleware
+  app.use(cookieParser());
   setupSecurity(app);
 
   if (swaggerConfig.enableSwaggerProtection) {

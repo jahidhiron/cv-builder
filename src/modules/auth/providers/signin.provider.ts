@@ -1,4 +1,5 @@
 import { ModuleName } from '@/common/enums';
+import { ConfigService } from '@/config';
 import {
   ACCOUNT_LOCKED_IN_MINUTES,
   MAX_LOGIN_FAILED_ATTEMPTS,
@@ -7,9 +8,9 @@ import { JwtPayload, UserPayload } from '@/modules/auth/interfaces';
 import { CleanupRefreshTokenProvider } from '@/modules/auth/providers/cleanup-refresh-token.provider';
 import { CreateAuthHistoryProvider } from '@/modules/auth/providers/create-auth-history.provider';
 import { CreateRefreshTokenProvider } from '@/modules/auth/providers/create-refresh-token.provider';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { RefreshTokenRepository } from '@/modules/auth/repositories';
-import { ConfigService } from '@/config';
+import { getDeviceFingerprint } from '@/modules/auth/utils';
+import { UserService } from '@/modules/users/services';
 import { HashService } from '@/shared/hash/hash.service';
 import { ErrorResponse } from '@/shared/response';
 import { Inject, Injectable, Scope } from '@nestjs/common';
@@ -22,7 +23,7 @@ import { SigninDto } from '../dtos';
 export class SigninProvider {
   constructor(
     @Inject(REQUEST) private readonly request: Request,
-    private readonly userRepo: UserRepository,
+    private readonly userService: UserService,
     private readonly hashService: HashService,
     private readonly jwtService: JwtService,
     private readonly errorResponse: ErrorResponse,
@@ -34,7 +35,7 @@ export class SigninProvider {
   ) {}
 
   async execute(dto: SigninDto) {
-    const user = await this.userRepo.findByEmailWithPassword(dto.email);
+    const user = await this.userService.findByEmailWithPassword(dto.email);
 
     if (!user) {
       await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'invalid-credentials' });
@@ -61,16 +62,16 @@ export class SigninProvider {
       if (user!.failedAttempts >= MAX_LOGIN_FAILED_ATTEMPTS) {
         user!.lockedUntil = new Date(Date.now() + ACCOUNT_LOCKED_IN_MINUTES * 60_000);
       }
-      await this.userRepo.update(
+      await this.userService.update(
         { id: user!.id },
         { failedAttempts: user!.failedAttempts, lockedUntil: user!.lockedUntil },
       );
       await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'invalid-credentials' });
     }
 
-    await this.userRepo.update({ id: user!.id }, { failedAttempts: 0, lockedUntil: null });
+    await this.userService.update({ id: user!.id }, { failedAttempts: 0, lockedUntil: null });
 
-    const familyId = this.deviceFingerprint();
+    const familyId = getDeviceFingerprint(this.request);
     const sessionId = this.hashService.generateToken(8);
 
     await this.refreshTokenRepo.revokeMany({ userId: user!.id, familyId }, 'signin-replaced');
@@ -114,12 +115,5 @@ export class SigninProvider {
     };
 
     return { user: userPayload, token: { accessToken, refreshToken } };
-  }
-
-  private deviceFingerprint(): string {
-    const ip = (this.request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
-      ?? this.request.socket?.remoteAddress ?? '';
-    const ua = this.request.headers['user-agent'] ?? '';
-    return Buffer.from(`${ip}|${ua}`).toString('base64').slice(0, 64);
   }
 }

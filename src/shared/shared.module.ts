@@ -1,4 +1,5 @@
 import { ConfigModule } from '@/config';
+import { CookieModule } from '@/shared/cookie';
 import { HttpClientModule } from '@/shared/http-client';
 import { Global, Module } from '@nestjs/common';
 import { HashModule } from './hash/hash.module';
@@ -19,10 +20,11 @@ import { ResponseModule } from './response';
  * - {@link HttpClientService} — opinionated Axios wrapper with retry and uniform responses.
  * - {@link SuccessResponse} / {@link ErrorResponse} — typed HTTP response helpers.
  * - {@link ResponseStatusInterceptor} — global interceptor that binds status codes automatically.
+ * - {@link CookieService} — centralised writer for authentication cookies.
  */
 @Global()
 @Module({
-  imports: [ConfigModule, MailModule, ResponseModule, HttpClientModule, HashModule, RedisModule],
-  exports: [ResponseModule, HttpClientModule, HashModule, RedisModule, MailModule],
+  imports: [ConfigModule, MailModule, ResponseModule, HttpClientModule, HashModule, RedisModule, CookieModule],
+  exports: [ResponseModule, HttpClientModule, HashModule, RedisModule, MailModule, CookieModule],
 })
 export class SharedModule {}

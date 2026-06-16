@@ -1,13 +1,13 @@
 import { ModuleName } from '@/common/enums';
+import { ConfigService } from '@/config';
 import { AuthTokenResponse, JwtPayload } from '@/modules/auth/interfaces';
 import { CleanupRefreshTokenProvider } from '@/modules/auth/providers/cleanup-refresh-token.provider';
 import { CreateAuthHistoryProvider } from '@/modules/auth/providers/create-auth-history.provider';
 import { CreateRefreshTokenProvider } from '@/modules/auth/providers/create-refresh-token.provider';
 import { UpdateRefreshTokenProvider } from '@/modules/auth/providers/update-refresh-token.provider';
 import { VerifyRefreshTokenProvider } from '@/modules/auth/providers/verify-refresh-token.provider';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { LoginHistoryRepository } from '@/modules/auth/repositories';
-import { ConfigService } from '@/config';
+import { UserService } from '@/modules/users/services';
 import { ErrorResponse } from '@/shared/response';
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
@@ -20,7 +20,7 @@ export class RefreshTokenProvider {
   constructor(
     @Inject(REQUEST) private readonly request: Request,
     private readonly jwtService: JwtService,
-    private readonly userRepo: UserRepository,
+    private readonly userService: UserService,
     private readonly errorResponse: ErrorResponse,
     private readonly configService: ConfigService,
     private readonly verifyRefreshToken: VerifyRefreshTokenProvider,
@@ -58,7 +58,7 @@ export class RefreshTokenProvider {
       await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'invalid-refresh-token' });
     }
 
-    const user = await this.userRepo.findOne({ id: payload.sub });
+    const user = await this.userService.findById(payload.sub);
     if (!user) await this.errorResponse.unauthorized({ module: ModuleName.User, key: 'user-not-found' });
     if (user!.isDeleted) await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'user-archive' });
     if (!user!.isActive) await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'user-inactive' });

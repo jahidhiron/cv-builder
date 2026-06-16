@@ -1,6 +1,7 @@
+import { ConfigService } from '@/config';
 import { RefreshToken } from '@/modules/auth/entities/refresh-token.entity';
 import { RefreshTokenRepository } from '@/modules/auth/repositories';
-import { ConfigService } from '@/config';
+import { getDeviceFingerprint } from '@/modules/auth/utils';
 import { HashService } from '@/shared/hash/hash.service';
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
@@ -18,7 +19,7 @@ export class CreateRefreshTokenProvider {
   async execute(token: string, userId: number): Promise<RefreshToken> {
     const tokenHash = await this.hashService.createHash(token);
     const expiresAt = new Date(Date.now() + this.configService.jwt.refreshTokenExpiredIn * 1000);
-    const familyId = this.deviceFingerprint();
+    const familyId = getDeviceFingerprint(this.request);
 
     return this.refreshTokenRepo.create({
       tokenHash,
@@ -26,13 +27,5 @@ export class CreateRefreshTokenProvider {
       expiresAt,
       familyId,
     } as Partial<RefreshToken>);
-  }
-
-  private deviceFingerprint(): string {
-    const ip = (this.request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
-      ?? this.request.socket?.remoteAddress
-      ?? '';
-    const ua = this.request.headers['user-agent'] ?? '';
-    return Buffer.from(`${ip}|${ua}`).toString('base64').slice(0, 64);
   }
 }

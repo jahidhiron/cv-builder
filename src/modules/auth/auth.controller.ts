@@ -1,8 +1,8 @@
 import { ModuleName } from '@/common/enums';
 import { AuthType } from '@/modules/auth/enums';
 import type { UserPayload } from '@/modules/auth/interfaces';
+import { CookieService } from '@/shared/cookie';
 import { SuccessResponse } from '@/shared/response';
-import { ConfigService } from '@/config';
 import {
   Body,
   Controller,
@@ -37,7 +37,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly successResponse: SuccessResponse,
-    private readonly configService: ConfigService,
+    private readonly cookieService: CookieService,
   ) {}
 
   @Auth(AuthType.None)
@@ -54,7 +54,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.signin(dto);
-    this.setAuthCookies(res, result.token.accessToken, result.token.refreshToken);
+    this.cookieService.setAuth(res, { accessToken: result.token.accessToken, refreshToken: result.token.refreshToken });
     return this.successResponse.ok({ module: ModuleName.Auth, key: 'signin', user: result.user });
   }
 
@@ -65,8 +65,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.googleSignin(dto);
-    this.setAuthCookies(res, result!.token.accessToken, result!.token.refreshToken);
-    return this.successResponse.ok({ module: ModuleName.Auth, key: 'signin', user: result!.user });
+    this.cookieService.setAuth(res, { accessToken: result.token.accessToken, refreshToken: result.token.refreshToken });
+    return this.successResponse.ok({ module: ModuleName.Auth, key: 'signin', user: result.user });
   }
 
   @Auth(AuthType.None)
@@ -76,9 +76,10 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const cookieToken = (req as Request & { cookies?: Record<string, string> }).cookies?.refreshToken;
+    const cookieToken: string | undefined = (req as { cookies?: Record<string, string> }).cookies
+      ?.refreshToken;
     const result = await this.authService.refreshToken(dto, cookieToken);
-    this.setAuthCookies(res, result.token.accessToken, result.token.refreshToken);
+    this.cookieService.setAuth(res, { accessToken: result.token.accessToken, refreshToken: result.token.refreshToken });
     return this.successResponse.ok({ module: ModuleName.Auth, key: 'refresh-token' });
   }
 
@@ -126,35 +127,10 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const cookieToken = (req as Request & { cookies?: Record<string, string> }).cookies?.refreshToken;
+    const cookieToken: string | undefined = (req as { cookies?: Record<string, string> }).cookies
+      ?.refreshToken;
     await this.authService.logout(user, query, cookieToken);
-    this.clearAuthCookies(res);
+    this.cookieService.clearAuth(res);
     return this.successResponse.ok({ module: ModuleName.Auth, key: 'logout' });
-  }
-
-  private setAuthCookies(res: Response, accessToken: string, refreshToken: string): void {
-    const secure = this.configService.app.isProd;
-
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: this.configService.jwt.accessTokenExpiredIn * 1000,
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure,
-      sameSite: 'lax',
-      path: '/v1/auth',
-      maxAge: this.configService.jwt.refreshTokenExpiredIn * 1000,
-    });
-  }
-
-  private clearAuthCookies(res: Response): void {
-    const secure = this.configService.app.isProd;
-    res.clearCookie('accessToken', { httpOnly: true, secure, sameSite: 'lax', path: '/' });
-    res.clearCookie('refreshToken', { httpOnly: true, secure, sameSite: 'lax', path: '/v1/auth' });
   }
 }

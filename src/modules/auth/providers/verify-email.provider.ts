@@ -2,7 +2,7 @@ import { ModuleName } from '@/common/enums';
 import { TokenType } from '@/modules/auth/enums';
 import { VerificationTokenPayload } from '@/modules/auth/interfaces';
 import { VerifyTokenProvider } from '@/modules/auth/providers/verify-token.provider';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
+import { UserService } from '@/modules/users/services';
 import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
 import { VerifyEmailDto } from '../dtos';
@@ -10,7 +10,7 @@ import { VerifyEmailDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class VerifyEmailProvider {
   constructor(
-    private readonly userRepo: UserRepository,
+    private readonly userService: UserService,
     private readonly verifyToken: VerifyTokenProvider,
     private readonly errorResponse: ErrorResponse,
   ) {}
@@ -31,6 +31,6 @@ export class VerifyEmailProvider {
       await this.errorResponse.conflict({ module: ModuleName.Auth, key: 'user-already-verified' });
     }
 
-    await this.userRepo.update({ id: user.id }, { emailVerified: true, emailVerifiedAt: new Date() });
+    await this.userService.update({ id: user.id }, { emailVerified: true, emailVerifiedAt: new Date() });
   }
 }

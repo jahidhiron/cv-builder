@@ -1,11 +1,11 @@
 import { ModuleName } from '@/common/enums';
+import { ConfigService } from '@/config';
 import { TokenType, UserRole } from '@/modules/auth/enums';
 import { TokenPayload } from '@/modules/auth/interfaces';
 import { CreateTokenProvider } from '@/modules/auth/providers/create-token.provider';
-import { RoleRepository } from '@/modules/roles/repositories/role.repository';
+import { RoleService } from '@/modules/roles/services';
 import { User } from '@/modules/users/entities/user.entity';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
-import { ConfigService } from '@/config';
+import { UserService } from '@/modules/users/services';
 import { HashService } from '@/shared/hash/hash.service';
 import { SendEmailParams } from '@/shared/mail/interfaces';
 import { MailService } from '@/shared/mail/mail.service';
@@ -16,8 +16,8 @@ import { SignupDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class SignupProvider {
   constructor(
-    private readonly userRepo: UserRepository,
-    private readonly roleRepo: RoleRepository,
+    private readonly userService: UserService,
+    private readonly roleService: RoleService,
     private readonly hashService: HashService,
     private readonly errorResponse: ErrorResponse,
     private readonly createToken: CreateTokenProvider,
@@ -26,19 +26,19 @@ export class SignupProvider {
   ) {}
 
   async execute(dto: SignupDto): Promise<User> {
-    const existing = await this.userRepo.findOne({ email: dto.email });
+    const existing = await this.userService.findByEmail(dto.email);
     if (existing) {
       await this.errorResponse.conflict({ module: ModuleName.Auth, key: 'email-exist' });
     }
 
-    const role = await this.roleRepo.findOne({ key: UserRole.User });
+    const role = await this.roleService.findByKey(UserRole.User);
     if (!role) {
       await this.errorResponse.notFound({ module: ModuleName.Role, key: 'role-not-found' });
     }
 
     const passwordHash = await this.hashService.createHash(dto.password);
 
-    const user = await this.userRepo.create({
+    const user = await this.userService.create({
       name: dto.name,
       email: dto.email,
       password: passwordHash,
@@ -64,6 +64,7 @@ export class SignupProvider {
     };
     await this.emailService.sendEmail(emailParams);
 
+    delete (user as unknown as Record<string, unknown>).password;
     return user;
   }
 }

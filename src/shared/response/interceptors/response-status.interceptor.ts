@@ -29,7 +29,7 @@ export class ResponseStatusInterceptor implements NestInterceptor {
     if (context.getType() !== 'http') return next.handle();
 
     const res = context.switchToHttp().getResponse<Response>();
-    const originalJson = (body: unknown): Response => res.json(body);
+    const originalJson = res.json.bind(res);
 
     res.json = function (body: unknown): Response {
       if (body !== null && typeof body === 'object' && 'statusCode' in body) {

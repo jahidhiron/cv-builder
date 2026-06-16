@@ -1,3 +1,4 @@
+import { ConfigService } from '@/config';
 import { JwtPayload, UserPayload } from '@/modules/auth/interfaces';
 import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -10,6 +11,7 @@ export class JwtAuthGuard extends BaseAuthGuard {
   constructor(
     protected readonly reflector: Reflector,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {
     super(reflector);
   }
@@ -27,7 +29,9 @@ export class JwtAuthGuard extends BaseAuthGuard {
     }
 
     try {
-      const payload = this.jwtService.verify<JwtPayload>(token);
+      const payload = this.jwtService.verify<JwtPayload>(token, {
+        secret: this.configService.jwt.accessSecret,
+      });
       request.user = {
         id: payload.sub,
         name: payload.name,

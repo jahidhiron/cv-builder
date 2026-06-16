@@ -1,28 +1,29 @@
 import { ModuleName } from '@/common/enums';
+import { ConfigService } from '@/config';
+import { UserRole } from '@/modules/auth/enums';
 import { JwtPayload, UserPayload } from '@/modules/auth/interfaces';
 import { CleanupRefreshTokenProvider } from '@/modules/auth/providers/cleanup-refresh-token.provider';
 import { CreateAuthHistoryProvider } from '@/modules/auth/providers/create-auth-history.provider';
 import { CreateRefreshTokenProvider } from '@/modules/auth/providers/create-refresh-token.provider';
-import { UserRole } from '@/modules/auth/enums';
-import { RoleRepository } from '@/modules/roles/repositories/role.repository';
+import { getDeviceFingerprint } from '@/modules/auth/utils';
+import { RoleService } from '@/modules/roles/services';
 import { User } from '@/modules/users/entities/user.entity';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
-import { ConfigService } from '@/config';
+import { UserService } from '@/modules/users/services';
 import { HashService } from '@/shared/hash/hash.service';
 import { ErrorResponse } from '@/shared/response';
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { OAuth2Client } from 'google-auth-library';
 import type { Request } from 'express';
+import { OAuth2Client } from 'google-auth-library';
 import { GoogleSigninDto } from '../dtos';
 
 @Injectable({ scope: Scope.REQUEST })
 export class GoogleSigninProvider {
   constructor(
     @Inject(REQUEST) private readonly request: Request,
-    private readonly userRepo: UserRepository,
-    private readonly roleRepo: RoleRepository,
+    private readonly userService: UserService,
+    private readonly roleService: RoleService,
     private readonly jwtService: JwtService,
     private readonly hashService: HashService,
     private readonly errorResponse: ErrorResponse,
@@ -47,18 +48,17 @@ export class GoogleSigninProvider {
       }
       googlePayload = { sub: p!.sub, email: p!.email!, name: p!.name ?? p!.email!, picture: p!.picture };
     } catch {
-      await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'invalid-google-token' });
-      return; // unreachable — keeps TS happy
+      return this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'invalid-google-token' });
     }
 
-    let user = await this.userRepo.findOne({ email: googlePayload.email });
+    let user = await this.userService.findByEmail(googlePayload.email);
 
     if (!user) {
-      const role = await this.roleRepo.findOne({ key: UserRole.User });
+      const role = await this.roleService.findByKey(UserRole.User);
       if (!role) {
         await this.errorResponse.notFound({ module: ModuleName.Role, key: 'role-not-found' });
       }
-      user = await this.userRepo.create({
+      user = await this.userService.create({
         name: googlePayload.name,
         email: googlePayload.email,
         googleId: googlePayload.sub,
@@ -75,11 +75,11 @@ export class GoogleSigninProvider {
         await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'user-inactive' });
       }
       if (!user.googleId) {
-        await this.userRepo.update({ id: user.id }, { googleId: googlePayload.sub });
+        await this.userService.update({ id: user.id }, { googleId: googlePayload.sub });
       }
     }
 
-    const familyId = this.deviceFingerprint();
+    const familyId = getDeviceFingerprint(this.request);
     const sessionId = this.hashService.generateToken(8);
 
     const jwtPayload: JwtPayload = {
@@ -121,12 +121,5 @@ export class GoogleSigninProvider {
     };
 
     return { user: userPayload, token: { accessToken, refreshToken } };
-  }
-
-  private deviceFingerprint(): string {
-    const ip = (this.request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
-      ?? this.request.socket?.remoteAddress ?? '';
-    const ua = this.request.headers['user-agent'] ?? '';
-    return Buffer.from(`${ip}|${ua}`).toString('base64').slice(0, 64);
   }
 }

@@ -1,6 +1,6 @@
 import { ModuleName } from '@/common/enums';
 import { UserPayload } from '@/modules/auth/interfaces';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
+import { UserService } from '@/modules/users/services';
 import { HashService } from '@/shared/hash/hash.service';
 import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
@@ -9,13 +9,13 @@ import { ChangePasswordDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class ChangePasswordProvider {
   constructor(
-    private readonly userRepo: UserRepository,
+    private readonly userService: UserService,
     private readonly hashService: HashService,
     private readonly errorResponse: ErrorResponse,
   ) {}
 
   async execute(dto: ChangePasswordDto, currentUser: UserPayload): Promise<void> {
-    const user = await this.userRepo.findWithPassword(currentUser.id);
+    const user = await this.userService.findByIdWithPassword(currentUser.id);
     if (!user) {
       await this.errorResponse.notFound({ module: ModuleName.Auth, key: 'user-not-found' });
     }
@@ -29,6 +29,6 @@ export class ChangePasswordProvider {
     }
 
     const newHash = await this.hashService.createHash(dto.newPassword);
-    await this.userRepo.update({ id: user!.id }, { password: newHash });
+    await this.userService.update({ id: user!.id }, { password: newHash });
   }
 }

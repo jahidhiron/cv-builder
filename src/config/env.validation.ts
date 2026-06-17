@@ -111,6 +111,30 @@ export const envValidationSchema = Joi.object({
   MAILGUN_FROM_NAME: Joi.string().optional().allow('', null),
   SUPPORT_EMAIL: Joi.string().email().optional().allow('', null),
 
+  // When R2_ENDPOINT is provided the remaining four vars are all required,
+  // preventing silent partial misconfiguration that would fail at upload time.
+  R2_ENDPOINT: Joi.string().uri().optional().allow('', null),
+  R2_ACCESS_KEY_ID: Joi.when('R2_ENDPOINT', {
+    is: Joi.string().uri().required(),
+    then: Joi.string().required(),
+    otherwise: Joi.string().optional().allow('', null),
+  }),
+  R2_SECRET_ACCESS_KEY: Joi.when('R2_ENDPOINT', {
+    is: Joi.string().uri().required(),
+    then: Joi.string().required(),
+    otherwise: Joi.string().optional().allow('', null),
+  }),
+  R2_BUCKET_NAME: Joi.when('R2_ENDPOINT', {
+    is: Joi.string().uri().required(),
+    then: Joi.string().required(),
+    otherwise: Joi.string().optional().allow('', null),
+  }),
+  R2_PUBLIC_BASE_URL: Joi.when('R2_ENDPOINT', {
+    is: Joi.string().uri().required(),
+    then: Joi.string().uri().required(),
+    otherwise: Joi.string().optional().allow('', null),
+  }),
+
   COOKIE_SAME_SITE: Joi.string().valid('lax', 'strict', 'none').default('lax'),
   COOKIE_PATH: Joi.string().default('/'),
   COOKIE_REFRESH_PATH: Joi.string().default('/v1/auth'),

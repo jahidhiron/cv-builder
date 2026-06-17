@@ -1,12 +1,12 @@
-// import { IConditions, RawQuery, Sort } from '@/helpers/interfaces';
+import { RangeCondition } from './range-condition.interface';
 
-// export interface FindOptions<T> {
-//   query?: Partial<T>;
-//   conditions?: IConditions[];
-//   page?: number;
-//   size?: number;
-//   relations?: string[];
-//   sort?: Sort[];
-//   rawQueries?: RawQuery[];
-//   select?: string[];
-// }
+/**
+ * Custom query filter type for `list` / `paginatedList`.
+ *
+ * Each entity field can be matched by equality (primitive value) or by a
+ * `RangeCondition` object (`$gte`, `$lte`, `$gt`, `$lt`, `$eq`, `$ne`).
+ * Nested relation objects are also supported via recursion.
+ */
+export type QueryFilter<T> = {
+  [K in keyof T]?: string | number | boolean | Date | null | RangeCondition;
+};

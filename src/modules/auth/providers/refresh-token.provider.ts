@@ -7,7 +7,9 @@ import { CreateRefreshTokenProvider } from '@/modules/auth/providers/create-refr
 import { UpdateRefreshTokenProvider } from '@/modules/auth/providers/update-refresh-token.provider';
 import { VerifyRefreshTokenProvider } from '@/modules/auth/providers/verify-refresh-token.provider';
 import { LoginHistoryRepository } from '@/modules/auth/repositories';
-import { UserService } from '@/modules/users/services';
+import { PermissionRepository } from '@/modules/permissions/repositories/permission.repository';
+import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
+import { RedisService } from '@/shared/redis/redis.service';
 import { ErrorResponse } from '@/shared/response';
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
@@ -20,7 +22,7 @@ export class RefreshTokenProvider {
   constructor(
     @Inject(REQUEST) private readonly request: Request,
     private readonly jwtService: JwtService,
-    private readonly userService: UserService,
+    private readonly findOneUser: FindOneUserProvider,
     private readonly errorResponse: ErrorResponse,
     private readonly configService: ConfigService,
     private readonly verifyRefreshToken: VerifyRefreshTokenProvider,
@@ -29,6 +31,8 @@ export class RefreshTokenProvider {
     private readonly cleanupRefreshToken: CleanupRefreshTokenProvider,
     private readonly createAuthHistory: CreateAuthHistoryProvider,
     private readonly loginHistoryRepo: LoginHistoryRepository,
+    private readonly redisService: RedisService,
+    private readonly permissionRepo: PermissionRepository,
   ) {}
 
   async execute(refreshToken: string): Promise<AuthTokenResponse> {
@@ -58,7 +62,12 @@ export class RefreshTokenProvider {
       await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'invalid-refresh-token' });
     }
 
-    const user = await this.userService.findById(payload.sub);
+    const isBlacklisted = await this.redisService.exists(`blacklist:${refreshToken}`);
+    if (isBlacklisted) {
+      await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'invalid-refresh-token' });
+    }
+
+    const user = await this.findOneUser.execute({ id: payload.sub });
     if (!user) await this.errorResponse.unauthorized({ module: ModuleName.User, key: 'user-not-found' });
     if (user!.isDeleted) await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'user-archive' });
     if (!user!.isActive) await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'user-inactive' });
@@ -74,11 +83,16 @@ export class RefreshTokenProvider {
       { revokedAt: new Date(), revokedReason: 'refresh-replaced' } as Partial<RefreshToken>,
     );
 
+    const permissions = user!.roleId
+      ? await this.permissionRepo.findKeysByRoleId(user!.roleId)
+      : [];
+
     const newPayload: JwtPayload = {
       sub: payload.sub,
       name: payload.name,
       email: payload.email,
       roleId: payload.roleId,
+      permissions,
       familyId: dbToken!.familyId ?? payload.familyId,
       sessionId: payload.sessionId,
     };
@@ -94,6 +108,25 @@ export class RefreshTokenProvider {
 
     await this.createRefreshToken.execute(newRefreshToken, payload.sub);
     await this.cleanupRefreshToken.execute(payload.sub);
+
+    const redisKey = `auth:${payload.sub}:${newPayload.familyId}:${payload.sessionId}`;
+    const oldTokens = await this.redisService.hgetall<{ accessToken: string; refreshToken: string }>(redisKey);
+    await Promise.all([
+      oldTokens?.accessToken &&
+        this.redisService.set(
+          `blacklist:${oldTokens.accessToken}`,
+          '1',
+          this.configService.jwt.accessTokenExpiredIn,
+        ),
+      oldTokens?.refreshToken &&
+        this.redisService.set(
+          `blacklist:${oldTokens.refreshToken}`,
+          '1',
+          this.configService.jwt.refreshTokenExpiredIn,
+        ),
+    ]);
+    await this.redisService.hmset(redisKey, { accessToken, refreshToken: newRefreshToken });
+    await this.redisService.expire(redisKey, this.configService.jwt.refreshTokenExpiredIn);
 
     await this.loginHistoryRepo.updateMany(
       { userId: payload.sub, sessionId: payload.sessionId },

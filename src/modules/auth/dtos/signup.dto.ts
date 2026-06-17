@@ -6,18 +6,18 @@ export class SignupDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
-  name: string;
+  name!: string;
 
   @ApiProperty({ example: 'john@example.com' })
   @IsEmail()
   @IsNotEmpty()
   @MaxLength(255)
-  email: string;
+  email!: string;
 
   @ApiProperty({ example: 'Password@123', minLength: 8 })
   @IsString()
   @IsNotEmpty()
   @MinLength(8)
   @MaxLength(128)
-  password: string;
+  password!: string;
 }

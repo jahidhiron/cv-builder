@@ -10,8 +10,11 @@ import { CreateAuthHistoryProvider } from '@/modules/auth/providers/create-auth-
 import { CreateRefreshTokenProvider } from '@/modules/auth/providers/create-refresh-token.provider';
 import { RefreshTokenRepository } from '@/modules/auth/repositories';
 import { getDeviceFingerprint } from '@/modules/auth/utils';
-import { UserService } from '@/modules/users/services';
+import { PermissionRepository } from '@/modules/permissions/repositories/permission.repository';
+import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
+import { UpdateUserProvider } from '@/modules/users/providers/update-user.provider';
 import { HashService } from '@/shared/hash/hash.service';
+import { RedisService } from '@/shared/redis/redis.service';
 import { ErrorResponse } from '@/shared/response';
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
@@ -23,7 +26,8 @@ import { SigninDto } from '../dtos';
 export class SigninProvider {
   constructor(
     @Inject(REQUEST) private readonly request: Request,
-    private readonly userService: UserService,
+    private readonly findOneUser: FindOneUserProvider,
+    private readonly updateUser: UpdateUserProvider,
     private readonly hashService: HashService,
     private readonly jwtService: JwtService,
     private readonly errorResponse: ErrorResponse,
@@ -32,10 +36,12 @@ export class SigninProvider {
     private readonly createRefreshToken: CreateRefreshTokenProvider,
     private readonly cleanupRefreshToken: CleanupRefreshTokenProvider,
     private readonly createAuthHistory: CreateAuthHistoryProvider,
+    private readonly redisService: RedisService,
+    private readonly permissionRepo: PermissionRepository,
   ) {}
 
   async execute(dto: SigninDto) {
-    const user = await this.userService.findByEmailWithPassword(dto.email);
+    const user = await this.findOneUser.execute({ email: dto.email }, { withPassword: true });
 
     if (!user) {
       await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'invalid-credentials' });
@@ -62,25 +68,30 @@ export class SigninProvider {
       if (user!.failedAttempts >= MAX_LOGIN_FAILED_ATTEMPTS) {
         user!.lockedUntil = new Date(Date.now() + ACCOUNT_LOCKED_IN_MINUTES * 60_000);
       }
-      await this.userService.update(
+      await this.updateUser.execute(
         { id: user!.id },
         { failedAttempts: user!.failedAttempts, lockedUntil: user!.lockedUntil },
       );
       await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'invalid-credentials' });
     }
 
-    await this.userService.update({ id: user!.id }, { failedAttempts: 0, lockedUntil: null });
+    await this.updateUser.execute({ id: user!.id }, { failedAttempts: 0, lockedUntil: null });
 
     const familyId = getDeviceFingerprint(this.request);
     const sessionId = this.hashService.generateToken(8);
 
     await this.refreshTokenRepo.revokeMany({ userId: user!.id, familyId }, 'signin-replaced');
 
+    const permissions = user!.roleId
+      ? await this.permissionRepo.findKeysByRoleId(user!.roleId)
+      : [];
+
     const jwtPayload: JwtPayload = {
       sub: user!.id,
       name: user!.name,
       email: user!.email,
       roleId: user!.roleId,
+      permissions,
       familyId,
       sessionId,
     };
@@ -97,6 +108,10 @@ export class SigninProvider {
     await this.createRefreshToken.execute(refreshToken, user!.id);
     await this.cleanupRefreshToken.execute(user!.id);
 
+    const redisKey = `auth:${user!.id}:${familyId}:${sessionId}`;
+    await this.redisService.hmset(redisKey, { accessToken, refreshToken });
+    await this.redisService.expire(redisKey, this.configService.jwt.refreshTokenExpiredIn);
+
     await this.createAuthHistory.execute({
       userId: user!.id,
       sessionId,
@@ -110,6 +125,7 @@ export class SigninProvider {
       name: user!.name,
       email: user!.email,
       roleId: user!.roleId,
+      permissions,
       familyId,
       sessionId,
     };

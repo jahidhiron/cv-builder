@@ -5,5 +5,5 @@ export class GoogleSigninDto {
   @ApiProperty({ description: 'Google ID token obtained from the frontend' })
   @IsString()
   @IsNotEmpty()
-  idToken: string;
+  idToken!: string;
 }

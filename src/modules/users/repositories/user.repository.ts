@@ -32,4 +32,5 @@ export class UserRepository extends BaseRepository<User> {
       .where('user.email = :email', { email })
       .getOne();
   }
+
 }

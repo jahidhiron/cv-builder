@@ -23,6 +23,7 @@ import {
   RefreshTokenRepository,
   VerificationTokenRepository,
 } from '@/modules/auth/repositories';
+import { PermissionModule } from '@/modules/permissions/permission.module';
 import { RoleModule } from '@/modules/roles/role.module';
 import { UserModule } from '@/modules/users/user.module';
 import { SharedModule } from '@/shared';
@@ -37,6 +38,7 @@ import { AuthGuard, JwtAuthGuard } from './guards';
     SharedModule,
     RoleModule,
     UserModule,
+    PermissionModule,
     ConfigModule,
     JwtModule.register({}),
   ],

@@ -1,4 +1,4 @@
-import { BaseEntity } from '@/common/entities/base.entity';
+import { BaseTimestampEntity } from '@/common/entities/base-timestamp.entity';
 import { timestampWithTimezone } from '@/common/utils';
 import { Column } from 'typeorm';
 
@@ -7,28 +7,28 @@ import { Column } from 'typeorm';
  *
  * Extend this entity for tables that require soft deletion.
  */
-export abstract class BaseSoftDeleteEntity extends BaseEntity {
+export abstract class BaseSoftDeleteEntity extends BaseTimestampEntity {
   /** Flag indicating whether the entity is soft-deleted */
   @Column({ default: false })
-  isDeleted: boolean;
+  isDeleted!: boolean;
 
   /** Timestamp when the entity was soft-deleted */
-  @Column({ type: 'timestamp', nullable: true })
-  deletedAt: Date | null;
+  @Column({ type: 'timestamptz', nullable: true })
+  deletedAt!: Date | null;
 
-  /**
-   * Soft delete the entity
-   */
-  softRemove() {
+  /** ID of the user who performed the soft delete */
+  @Column({ type: 'bigint', nullable: true })
+  deletedBy?: number | null;
+
+  softRemove(deletedBy?: number) {
     this.isDeleted = true;
     this.deletedAt = timestampWithTimezone();
+    if (deletedBy !== undefined) this.deletedBy = deletedBy;
   }
 
-  /**
-   * Restore a soft-deleted entity
-   */
   restore() {
     this.isDeleted = false;
     this.deletedAt = null;
+    this.deletedBy = null;
   }
 }

@@ -1,43 +1,31 @@
+import { BaseEntity } from '@/common/entities';
 import { User } from '@/modules/users/entities/user.entity';
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
 @Entity('verification_tokens')
-export class VerificationToken {
-  @PrimaryGeneratedColumn()
-  id: number;
-
+export class VerificationToken extends BaseEntity {
   @Column({ length: 255 })
-  token: string;
+  token!: string;
 
   @Column({ length: 50 })
-  type: string;
+  type!: string;
 
-  @Column({ name: 'user_id', type: 'bigint' })
-  userId: number;
+  @Column({ type: 'bigint' })
+  userId!: number;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user!: User;
 
   @Column({ type: 'varchar', length: 64, nullable: true })
-  ip: string | null;
+  ip!: string | null;
 
-  @Column({ name: 'expired_at', type: 'timestamptz' })
-  expiredAt: Date;
-
-  @Column({ default: false })
-  applied: boolean;
+  @Column({ type: 'timestamptz' })
+  expiredAt!: Date;
 
   @Column({ default: false })
-  verified: boolean;
+  applied!: boolean;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
-  createdAt: Date;
+  @Column({ default: false })
+  verified!: boolean;
 }

@@ -4,4 +4,5 @@ export interface RangeCondition {
   $gt?: number | string;
   $lt?: number | string;
   $eq?: number | string;
+  $ne?: number | string;
 }

@@ -5,5 +5,6 @@ export enum ModuleName {
   Health = 'healths',
   Auth = 'auth',
   Role = 'roles',
+  Permission = 'permissions',
   User = 'users',
 }

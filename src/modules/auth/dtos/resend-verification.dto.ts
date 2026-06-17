@@ -5,5 +5,5 @@ export class ResendVerificationDto {
   @ApiProperty({ example: 'john@example.com' })
   @IsEmail()
   @IsNotEmpty()
-  email: string;
+  email!: string;
 }

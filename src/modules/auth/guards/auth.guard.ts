@@ -20,7 +20,7 @@ export class AuthGuard extends BaseAuthGuard {
   protected async handleOptional(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const auth = request.headers.authorization;
-    const cookieToken = (request as Request & { cookies?: Record<string, string> }).cookies?.accessToken;
+    const cookieToken = request.cookies?.accessToken as string | undefined;
 
     if (auth?.startsWith('Bearer ') || cookieToken) {
       const contextId = ContextIdFactory.getByRequest(request);

@@ -1,6 +1,12 @@
 {
   "error": {
-    "user-not-found": "User not found"
+    "user-not-found": "User not found",
+    "user-email-taken": "Email is already taken",
+    "user-already-active": "User is already active",
+    "user-already-inactive": "User is already inactive",
+    "user-not-archived": "User is not archived",
+    "upload-avatar-invalid-type": "Only image files (jpeg, png, webp) are allowed",
+    "upload-avatar-too-large": "Avatar must be smaller than 5 MB"
   },
   "success": {}
 }

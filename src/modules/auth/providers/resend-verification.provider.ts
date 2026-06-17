@@ -3,7 +3,7 @@ import { ConfigService } from '@/config';
 import { TokenType } from '@/modules/auth/enums';
 import { TokenPayload } from '@/modules/auth/interfaces';
 import { CreateTokenProvider } from '@/modules/auth/providers/create-token.provider';
-import { UserService } from '@/modules/users/services';
+import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
 import { SendEmailParams } from '@/shared/mail/interfaces';
 import { MailService } from '@/shared/mail/mail.service';
 import { ErrorResponse } from '@/shared/response';
@@ -13,7 +13,7 @@ import { ResendVerificationDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class ResendVerificationProvider {
   constructor(
-    private readonly userService: UserService,
+    private readonly findOneUser: FindOneUserProvider,
     private readonly errorResponse: ErrorResponse,
     private readonly createToken: CreateTokenProvider,
     private readonly configService: ConfigService,
@@ -21,7 +21,7 @@ export class ResendVerificationProvider {
   ) {}
 
   async execute(dto: ResendVerificationDto): Promise<void> {
-    const user = await this.userService.findByEmail(dto.email);
+    const user = await this.findOneUser.execute({ email: dto.email });
     if (!user) {
       await this.errorResponse.notFound({ module: ModuleName.Auth, key: 'user-not-found' });
     }

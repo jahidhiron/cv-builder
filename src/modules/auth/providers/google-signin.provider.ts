@@ -6,9 +6,12 @@ import { CleanupRefreshTokenProvider } from '@/modules/auth/providers/cleanup-re
 import { CreateAuthHistoryProvider } from '@/modules/auth/providers/create-auth-history.provider';
 import { CreateRefreshTokenProvider } from '@/modules/auth/providers/create-refresh-token.provider';
 import { getDeviceFingerprint } from '@/modules/auth/utils';
-import { RoleService } from '@/modules/roles/services';
+import { PermissionRepository } from '@/modules/permissions/repositories/permission.repository';
+import { RoleService } from '@/modules/roles/role.service';
 import { User } from '@/modules/users/entities/user.entity';
-import { UserService } from '@/modules/users/services';
+import { CreateUserProvider } from '@/modules/users/providers/create-user.provider';
+import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
+import { UpdateUserProvider } from '@/modules/users/providers/update-user.provider';
 import { HashService } from '@/shared/hash/hash.service';
 import { ErrorResponse } from '@/shared/response';
 import { Inject, Injectable, Scope } from '@nestjs/common';
@@ -22,7 +25,9 @@ import { GoogleSigninDto } from '../dtos';
 export class GoogleSigninProvider {
   constructor(
     @Inject(REQUEST) private readonly request: Request,
-    private readonly userService: UserService,
+    private readonly findOneUser: FindOneUserProvider,
+    private readonly createUser: CreateUserProvider,
+    private readonly updateUser: UpdateUserProvider,
     private readonly roleService: RoleService,
     private readonly jwtService: JwtService,
     private readonly hashService: HashService,
@@ -31,6 +36,7 @@ export class GoogleSigninProvider {
     private readonly createRefreshToken: CreateRefreshTokenProvider,
     private readonly cleanupRefreshToken: CleanupRefreshTokenProvider,
     private readonly createAuthHistory: CreateAuthHistoryProvider,
+    private readonly permissionRepo: PermissionRepository,
   ) {}
 
   async execute(dto: GoogleSigninDto) {
@@ -51,14 +57,14 @@ export class GoogleSigninProvider {
       return this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'invalid-google-token' });
     }
 
-    let user = await this.userService.findByEmail(googlePayload.email);
+    let user = await this.findOneUser.execute({ email: googlePayload.email });
 
     if (!user) {
       const role = await this.roleService.findByKey(UserRole.User);
       if (!role) {
         await this.errorResponse.notFound({ module: ModuleName.Role, key: 'role-not-found' });
       }
-      user = await this.userService.create({
+      user = await this.createUser.execute({
         name: googlePayload.name,
         email: googlePayload.email,
         googleId: googlePayload.sub,
@@ -75,18 +81,23 @@ export class GoogleSigninProvider {
         await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'user-inactive' });
       }
       if (!user.googleId) {
-        await this.userService.update({ id: user.id }, { googleId: googlePayload.sub });
+        await this.updateUser.execute({ id: user.id }, { googleId: googlePayload.sub });
       }
     }
 
     const familyId = getDeviceFingerprint(this.request);
     const sessionId = this.hashService.generateToken(8);
 
+    const permissions = user.roleId
+      ? await this.permissionRepo.findKeysByRoleId(user.roleId)
+      : [];
+
     const jwtPayload: JwtPayload = {
       sub: user.id,
       name: user.name,
       email: user.email,
       roleId: user.roleId,
+      permissions,
       familyId,
       sessionId,
     };
@@ -116,6 +127,7 @@ export class GoogleSigninProvider {
       name: user.name,
       email: user.email,
       roleId: user.roleId,
+      permissions,
       familyId,
       sessionId,
     };

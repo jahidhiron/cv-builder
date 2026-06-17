@@ -1,5 +1,6 @@
 import { ConfigService } from '@/config';
 import { JwtPayload, UserPayload } from '@/modules/auth/interfaces';
+import { RedisService } from '@/shared/redis/redis.service';
 import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
@@ -12,6 +13,7 @@ export class JwtAuthGuard extends BaseAuthGuard {
     protected readonly reflector: Reflector,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly redisService: RedisService,
   ) {
     super(reflector);
   }
@@ -28,6 +30,11 @@ export class JwtAuthGuard extends BaseAuthGuard {
       throw new UnauthorizedException('Authentication token is required');
     }
 
+    const isBlacklisted = await this.redisService.exists(`blacklist:${token}`);
+    if (isBlacklisted) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
     try {
       const payload = this.jwtService.verify<JwtPayload>(token, {
         secret: this.configService.jwt.accessSecret,
@@ -39,6 +46,7 @@ export class JwtAuthGuard extends BaseAuthGuard {
         roleId: payload.roleId,
         roleKey: payload.roleKey,
         role: payload.role,
+        permissions: payload.permissions ?? [],
         familyId: payload.familyId,
         sessionId: payload.sessionId,
       };

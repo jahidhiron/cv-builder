@@ -18,6 +18,7 @@ import { rabbitmqConfig, RabbitmqConfigService } from '@/config/rabbitmq';
 import { realtimeConfig, RealtimeConfigService } from '@/config/realtime';
 import { RedisConfigService } from '@/config/redis';
 import { redisConfig } from '@/config/redis/redis.config';
+import { StorageConfigService, storageConfig } from '@/config/storage';
 import { SwaggerConfigService } from '@/config/swagger';
 import swaggerConfig from '@/config/swagger/swagger.config';
 import { Module } from '@nestjs/common';
@@ -40,6 +41,7 @@ import { CookieResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestj
         redisConfig,
         mailConfig,
         cookieConfig,
+        storageConfig,
       ],
       validationSchema: envValidationSchema,
       validationOptions: { abortEarly: false },
@@ -74,6 +76,7 @@ import { CookieResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestj
     RedisConfigService,
     MailConfigService,
     CookieConfigService,
+    StorageConfigService,
   ],
   exports: [ConfigService, AppLogger, CookieConfigService],
 })

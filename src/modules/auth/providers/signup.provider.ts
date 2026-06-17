@@ -3,9 +3,10 @@ import { ConfigService } from '@/config';
 import { TokenType, UserRole } from '@/modules/auth/enums';
 import { TokenPayload } from '@/modules/auth/interfaces';
 import { CreateTokenProvider } from '@/modules/auth/providers/create-token.provider';
-import { RoleService } from '@/modules/roles/services';
+import { RoleService } from '@/modules/roles/role.service';
 import { User } from '@/modules/users/entities/user.entity';
-import { UserService } from '@/modules/users/services';
+import { CreateUserProvider } from '@/modules/users/providers/create-user.provider';
+import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
 import { HashService } from '@/shared/hash/hash.service';
 import { SendEmailParams } from '@/shared/mail/interfaces';
 import { MailService } from '@/shared/mail/mail.service';
@@ -16,7 +17,8 @@ import { SignupDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class SignupProvider {
   constructor(
-    private readonly userService: UserService,
+    private readonly findOneUser: FindOneUserProvider,
+    private readonly createUser: CreateUserProvider,
     private readonly roleService: RoleService,
     private readonly hashService: HashService,
     private readonly errorResponse: ErrorResponse,
@@ -26,7 +28,7 @@ export class SignupProvider {
   ) {}
 
   async execute(dto: SignupDto): Promise<User> {
-    const existing = await this.userService.findByEmail(dto.email);
+    const existing = await this.findOneUser.execute({ email: dto.email });
     if (existing) {
       await this.errorResponse.conflict({ module: ModuleName.Auth, key: 'email-exist' });
     }
@@ -38,7 +40,7 @@ export class SignupProvider {
 
     const passwordHash = await this.hashService.createHash(dto.password);
 
-    const user = await this.userService.create({
+    const user = await this.createUser.execute({
       name: dto.name,
       email: dto.email,
       password: passwordHash,

@@ -5,10 +5,10 @@ export class SigninDto {
   @ApiProperty({ example: 'john@example.com' })
   @IsEmail()
   @IsNotEmpty()
-  email: string;
+  email!: string;
 
   @ApiProperty({ example: 'Password@123' })
   @IsString()
   @IsNotEmpty()
-  password: string;
+  password!: string;
 }

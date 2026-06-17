@@ -1,3 +1,4 @@
+import { BaseSoftDeleteEntity } from '@/common/entities';
 import { handle } from '@/common/helpers';
 import {
   ListParams,
@@ -390,6 +391,61 @@ export class BaseRepository<T extends ObjectLiteral> {
   }
 
   /**
+   * Soft-deletes an entity by calling `softRemove()` on it, which sets
+   * `isDeleted`, `deletedAt`, and `deletedBy` via the entity's own method.
+   *
+   * Only works for entities that extend `BaseSoftDeleteEntity`. Returns `null`
+   * when no matching row is found — callers should throw a 404 in that case.
+   *
+   * @param where     - Conditions identifying the row to soft-delete.
+   * @param deletedBy - ID of the user performing the deletion.
+   * @param manager   - Optional transaction context.
+   * @returns The soft-deleted entity, or `null` if no row matched.
+   */
+  async softDelete(
+    where: FindOptionsWhere<T>,
+    deletedBy?: number,
+    manager?: EntityManager,
+  ): Promise<T | null> {
+    return handle(
+      async () => {
+        const repo = this.getRepo(manager);
+        const entity = await repo.findOne({ where });
+        if (!entity) return null;
+        (entity as unknown as BaseSoftDeleteEntity).softRemove(deletedBy);
+        return repo.save(entity);
+      },
+      this.errorResponse,
+      this.logger,
+    );
+  }
+
+  /**
+   * Restores a soft-deleted entity by calling `restore()` on it, which clears
+   * `isDeleted`, `deletedAt`, and `deletedBy` via the entity's own method.
+   *
+   * Only works for entities that extend `BaseSoftDeleteEntity`. Returns `null`
+   * when no matching row is found — callers should throw a 404 in that case.
+   *
+   * @param where   - Conditions identifying the row to restore.
+   * @param manager - Optional transaction context.
+   * @returns The restored entity, or `null` if no row matched.
+   */
+  async restore(where: FindOptionsWhere<T>, manager?: EntityManager): Promise<T | null> {
+    return handle(
+      async () => {
+        const repo = this.getRepo(manager);
+        const entity = await repo.findOne({ where });
+        if (!entity) return null;
+        (entity as unknown as BaseSoftDeleteEntity).restore();
+        return repo.save(entity);
+      },
+      this.errorResponse,
+      this.logger,
+    );
+  }
+
+  /**
    * Executes `fn` inside a database transaction managed by the DataSource.
    *
    * The `EntityManager` passed to `fn` is scoped to the transaction. Pass it
@@ -468,7 +524,8 @@ export class BaseRepository<T extends ObjectLiteral> {
             '$lte' in value ||
             '$gt' in value ||
             '$lt' in value ||
-            '$eq' in value
+            '$eq' in value ||
+            '$ne' in value
           ) {
             const rangeValue = value as RangeCondition;
             const column = `${parentAlias}.${key}`;
@@ -485,6 +542,10 @@ export class BaseRepository<T extends ObjectLiteral> {
               qb.andWhere(`${column} < :${pk}_lt`, { [`${pk}_lt`]: rangeValue.$lt });
             if (rangeValue.$eq !== undefined)
               qb.andWhere(`${column} = :${pk}_eq`, { [`${pk}_eq`]: rangeValue.$eq });
+            if (rangeValue.$ne !== undefined)
+              qb.andWhere(`${column} != :${pk}_ne`, {
+                [`${pk}_ne`]: rangeValue.$ne,
+              });
           } else {
             const relationPath = `${parentAlias}.${key}`;
             const relationAlias =
@@ -502,7 +563,7 @@ export class BaseRepository<T extends ObjectLiteral> {
       }
     };
 
-    if (query) applyConditions(query);
+    if (query) applyConditions(query as Record<string, unknown>);
 
     /* SELECT */
     if (select) {

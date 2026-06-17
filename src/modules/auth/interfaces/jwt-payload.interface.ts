@@ -5,6 +5,7 @@ export interface JwtPayload {
   roleId?: number;
   roleKey?: string;
   role?: string;
+  permissions?: string[];
   familyId?: string;
   sessionId?: string;
   iat?: number;

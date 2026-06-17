@@ -2,7 +2,8 @@ import { ModuleName } from '@/common/enums';
 import { TokenType } from '@/modules/auth/enums';
 import { VerificationTokenPayload } from '@/modules/auth/interfaces';
 import { VerifyTokenProvider } from '@/modules/auth/providers/verify-token.provider';
-import { UserService } from '@/modules/users/services';
+import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
+import { UpdateUserProvider } from '@/modules/users/providers/update-user.provider';
 import { HashService } from '@/shared/hash/hash.service';
 import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
@@ -11,7 +12,8 @@ import { ResetPasswordDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class ResetPasswordProvider {
   constructor(
-    private readonly userService: UserService,
+    private readonly findOneUser: FindOneUserProvider,
+    private readonly updateUser: UpdateUserProvider,
     private readonly verifyToken: VerifyTokenProvider,
     private readonly hashService: HashService,
     private readonly errorResponse: ErrorResponse,
@@ -29,7 +31,7 @@ export class ResetPasswordProvider {
       await this.errorResponse.notFound({ module: ModuleName.User, key: 'user-not-found' });
     }
 
-    const fullUser = await this.userService.findByIdWithPassword(user.id);
+    const fullUser = await this.findOneUser.execute({ id: user.id }, { withPassword: true });
     if (fullUser?.password) {
       const isSame = await this.hashService.verify(fullUser.password, dto.password);
       if (isSame) {
@@ -38,6 +40,6 @@ export class ResetPasswordProvider {
     }
 
     const newHash = await this.hashService.createHash(dto.password);
-    await this.userService.update({ id: user.id }, { password: newHash });
+    await this.updateUser.execute({ id: user.id }, { password: newHash });
   }
 }

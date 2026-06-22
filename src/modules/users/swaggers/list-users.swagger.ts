@@ -1,6 +1,7 @@
-import { HTTP_STATUS } from '@/common/constants';
-import { SwaggerApiSuccessResponse } from '@/common/decorators';
-import { HttpMethod, ModuleName } from '@/common/enums';
+import { HTTP_STATUS } from '@/shared/response/constants';
+import { SwaggerApiSuccessResponse } from '@/common/swagger';
+import { HttpMethod } from '@/common/swagger/enums';
+import { ModuleName } from '@/common/base/enums';
 import { ForbiddenResponse, InternalServerErrorResponse, UnauthorizedResponse } from '@/common/swagger';
 import { UserListResponseDto } from '@/modules/users/dtos';
 import { applyDecorators } from '@nestjs/common';

@@ -9,6 +9,18 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
+/**
+ * Abstract base guard that handles the `AuthType` meta-data routing logic.
+ *
+ * Reads the `AUTH_TYPE_KEY` metadata from the handler and class:
+ * - `AuthType.None` — allows the request through unconditionally (public routes).
+ * - `AuthType.Optional` — delegates to `handleOptional`; attaches the user if a token
+ *   is present but never blocks the request when one is absent.
+ * - Any other type (default: `AuthType.Bearer`) — delegates to `validateRequest`.
+ *
+ * Concrete guards extend this class and implement `validateRequest`.
+ * They may also override `handleOptional` if optional-auth behaviour differs.
+ */
 @Injectable()
 export abstract class BaseAuthGuard implements CanActivate {
   constructor(protected readonly reflector: Reflector) {}

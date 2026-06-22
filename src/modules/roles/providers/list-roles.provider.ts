@@ -1,20 +1,27 @@
+import { ModuleName } from '@/common/base/enums';
+import { BasePaginatedListProvider } from '@/common/base';
+import { PaginatedListParams } from '@/common/base/repositories/interfaces';
 import { RoleListQueryDto } from '@/modules/roles/dtos';
 import { Role } from '@/modules/roles/entities/role.entity';
 import { RoleRepository } from '@/modules/roles/repositories/role.repository';
+import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
-import type { PaginatedResult } from '@/common/repositories/interfaces';
 
+/**
+ * Returns a paginated list of non-deleted roles.
+ * Supports fuzzy search on the `name` column via the `q` query parameter.
+ */
 @Injectable({ scope: Scope.REQUEST })
-export class ListRolesProvider {
-  constructor(private readonly roleRepo: RoleRepository) {}
+export class ListRolesProvider extends BasePaginatedListProvider<Role, RoleListQueryDto> {
+  constructor(repo: RoleRepository, errorResponse: ErrorResponse) {
+    super(ModuleName.Role, repo, errorResponse);
+  }
 
-  execute(dto: RoleListQueryDto): Promise<PaginatedResult<Role>> {
-    return this.roleRepo.paginatedList({
-      q: dto.q,
-      searchBy: ['name', 'key'],
-      page: dto.page,
-      limit: dto.limit,
+  protected override buildParams(dto: RoleListQueryDto): PaginatedListParams<Role> {
+    return {
+      ...super.buildParams(dto),
+      searchBy: ['name'],
       query: { isDeleted: false },
-    });
+    };
   }
 }

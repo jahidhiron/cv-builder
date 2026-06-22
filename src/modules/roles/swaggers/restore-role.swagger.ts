@@ -1,11 +1,13 @@
-import { HTTP_STATUS } from '@/common/constants';
-import { SwaggerApiSuccessResponse } from '@/common/decorators';
-import { HttpMethod, ModuleName } from '@/common/enums';
+import { HTTP_STATUS } from '@/shared/response/constants';
+import { SwaggerApiSuccessResponse } from '@/common/swagger';
+import { HttpMethod } from '@/common/swagger/enums';
+import { ModuleName } from '@/common/base/enums';
 import { BadRequestResponse, ForbiddenResponse, InternalServerErrorResponse, NotFoundResponse, UnauthorizedResponse } from '@/common/swagger';
 import { RoleResponseDto } from '@/modules/roles/dtos/role-response.dto';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam } from '@nestjs/swagger';
 
+/** Applies Swagger documentation decorators for the restore-role endpoint. */
 export function RestoreRoleSwaggerDocs() {
   const path = `${ModuleName.Role}/:id/restore`;
   const method = HttpMethod.PATCH;

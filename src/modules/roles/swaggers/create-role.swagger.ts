@@ -1,12 +1,14 @@
-import { HTTP_STATUS } from '@/common/constants';
-import { SwaggerApiSuccessResponse } from '@/common/decorators';
-import { HttpMethod, ModuleName } from '@/common/enums';
+import { HTTP_STATUS } from '@/shared/response/constants';
+import { SwaggerApiSuccessResponse } from '@/common/swagger';
+import { HttpMethod } from '@/common/swagger/enums';
+import { ModuleName } from '@/common/base/enums';
 import { ConflictResponse, ForbiddenResponse, InternalServerErrorResponse, UnauthorizedResponse } from '@/common/swagger';
 import { CreateRoleDto } from '@/modules/roles/dtos/create-role.dto';
 import { RoleResponseDto } from '@/modules/roles/dtos/role-response.dto';
 import { applyDecorators } from '@nestjs/common';
 import { ApiBody, ApiOperation } from '@nestjs/swagger';
 
+/** Applies Swagger documentation decorators for the create-role endpoint. */
 export function CreateRoleSwaggerDocs() {
   const path = `${ModuleName.Role}`;
   const method = HttpMethod.POST;

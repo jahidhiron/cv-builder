@@ -1,12 +1,21 @@
-import { HTTP_STATUS } from '@/common/constants';
-import { SwaggerApiSuccessResponse } from '@/common/decorators';
-import { HttpMethod, ModuleName } from '@/common/enums';
+import { HTTP_STATUS } from '@/shared/response/constants';
+import { SwaggerApiSuccessResponse } from '@/common/swagger';
+import { HttpMethod } from '@/common/swagger/enums';
+import { ModuleName } from '@/common/base/enums';
 import { ConflictResponse, InternalServerErrorResponse, UnauthorizedResponse, ForbiddenResponse } from '@/common/swagger';
 import { CreatePermissionDto } from '@/modules/permissions/dtos/create-permission.dto';
 import { PermissionResponseDto } from '@/modules/permissions/dtos/permission-response.dto';
 import { applyDecorators } from '@nestjs/common';
 import { ApiBody, ApiOperation } from '@nestjs/swagger';
 
+/**
+ * Composed Swagger decorator for the `POST /permissions` endpoint.
+ *
+ * Attaches the operation summary, request-body schema, 201 success response,
+ * and all documented error responses (401, 403, 409, 500) to the controller action.
+ *
+ * @returns A NestJS `MethodDecorator` produced by `applyDecorators`.
+ */
 export function CreatePermissionSwaggerDocs() {
   const path = `${ModuleName.Permission}`;
   const method = HttpMethod.POST;

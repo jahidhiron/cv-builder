@@ -1,17 +1,17 @@
-import { User } from '@/modules/users/entities/user.entity';
+import { BaseFindOneProvider } from '@/common/base';
+import { ModuleName } from '@/common/base/enums';
+import { User } from '@/modules/users/entities';
 import { UserRepository } from '@/modules/users/repositories/user.repository';
-import { Injectable } from '@nestjs/common';
-import type { FindOptionsWhere } from 'typeorm';
+import { ErrorResponse } from '@/shared/response';
+import { Injectable, Scope } from '@nestjs/common';
 
-@Injectable()
-export class FindOneUserProvider {
-  constructor(private readonly userRepo: UserRepository) {}
-
-  execute(where: FindOptionsWhere<User>, options?: { withPassword?: boolean }): Promise<User | null> {
-    if (options?.withPassword) {
-      if (where.id !== undefined) return this.userRepo.findWithPassword(where.id as number);
-      if (where.email !== undefined) return this.userRepo.findByEmailWithPassword(where.email as string);
-    }
-    return this.userRepo.findOne(where);
+/**
+ * Retrieves a single user by any `FindOptionsWhere<User>` criteria.
+ * Throws 404 when no matching user exists.
+ */
+@Injectable({ scope: Scope.REQUEST })
+export class FindOneUserProvider extends BaseFindOneProvider<User> {
+  constructor(repo: UserRepository, errorResponse: ErrorResponse) {
+    super(ModuleName.User, repo, errorResponse);
   }
 }

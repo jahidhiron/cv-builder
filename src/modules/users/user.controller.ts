@@ -1,7 +1,10 @@
-import { ModuleName } from '@/common/enums';
+import { ModuleName } from '@/common/base/enums';
+import { Serialize } from '@/common/interceptors';
+import { ParseIdPipe } from '@/common/pipes';
 import { CurrentUser } from '@/modules/auth/decorators/current-user.decorator';
 import type { UserPayload } from '@/modules/auth/interfaces';
-import { UpdateUserDto, UserListQueryDto } from '@/modules/users/dtos';
+import { UpdateUserDto, UserListQueryDto, UserListResponseDto, UserResponseDto } from '@/modules/users/dtos';
+import { AvatarFilePipe } from '@/modules/users/pipes';
 import {
   ActivateUserSwaggerDocs,
   DeactivateUserSwaggerDocs,
@@ -19,13 +22,9 @@ import {
   Body,
   Controller,
   Delete,
-  FileTypeValidator,
   Get,
-  MaxFileSizeValidator,
   Param,
   ParseBoolPipe,
-  ParseFilePipe,
-  ParseIntPipe,
   Patch,
   Query,
   UploadedFile,
@@ -43,23 +42,26 @@ export class UserController {
     private readonly successResponse: SuccessResponse,
   ) {}
 
+  @Serialize(UserListResponseDto)
   @Get()
   @ListUsersSwaggerDocs()
-  async list(@Query() query: UserListQueryDto, @CurrentUser() currentUser: UserPayload) {
-    const result = await this.userService.list(query, currentUser);
+  async list(@Query() query: UserListQueryDto) {
+    const result = await this.userService.list(query);
     return this.successResponse.ok({ module: ModuleName.User, key: 'users-list', ...result });
   }
 
+  @Serialize(UserResponseDto)
   @Get(':id')
   @FindOneUserSwaggerDocs()
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id', ParseIdPipe) id: number) {
     const result = await this.userService.findOne(id);
     return this.successResponse.ok({ module: ModuleName.User, key: 'user-detail', ...result });
   }
 
+  @Serialize(UserResponseDto)
   @Patch(':id')
   @UpdateUserSwaggerDocs()
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
+  async update(@Param('id', ParseIdPipe) id: number, @Body() dto: UpdateUserDto) {
     const result = await this.userService.update(id, dto);
     return this.successResponse.ok({ module: ModuleName.User, key: 'update-user', ...result });
   }
@@ -67,7 +69,7 @@ export class UserController {
   @Delete(':id')
   @DeleteUserSwaggerDocs()
   async remove(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIdPipe) id: number,
     @Query('force', new ParseBoolPipe({ optional: true })) force: boolean = false,
     @CurrentUser() currentUser: UserPayload,
   ) {
@@ -78,41 +80,37 @@ export class UserController {
     });
   }
 
+  @Serialize(UserResponseDto)
   @Patch(':id/restore')
   @RestoreUserSwaggerDocs()
-  async restore(@Param('id', ParseIntPipe) id: number) {
+  async restore(@Param('id', ParseIdPipe) id: number) {
     const result = await this.userService.restore(id);
     return this.successResponse.ok({ module: ModuleName.User, key: 'restore-user', ...result });
   }
 
+  @Serialize(UserResponseDto)
   @Patch(':id/activate')
   @ActivateUserSwaggerDocs()
-  async activate(@Param('id', ParseIntPipe) id: number) {
+  async activate(@Param('id', ParseIdPipe) id: number) {
     const result = await this.userService.activate(id);
     return this.successResponse.ok({ module: ModuleName.User, key: 'activate-user', ...result });
   }
 
+  @Serialize(UserResponseDto)
   @Patch(':id/deactivate')
   @DeactivateUserSwaggerDocs()
-  async deactivate(@Param('id', ParseIntPipe) id: number) {
+  async deactivate(@Param('id', ParseIdPipe) id: number) {
     const result = await this.userService.deactivate(id);
     return this.successResponse.ok({ module: ModuleName.User, key: 'deactivate-user', ...result });
   }
 
+  @Serialize(UserResponseDto)
   @Patch(':id/avatar')
   @UploadAvatarSwaggerDocs()
   @UseInterceptors(FileInterceptor('avatar'))
   async uploadAvatar(
-    @Param('id', ParseIntPipe) id: number,
-    @UploadedFile(
-      new ParseFilePipe({
-        fileIsRequired: true,
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-          new FileTypeValidator({ fileType: /^image\/(jpeg|png|webp)$/ }),
-        ],
-      }),
-    )
+    @Param('id', ParseIdPipe) id: number,
+    @UploadedFile(new AvatarFilePipe())
     file: MulterFile,
   ) {
     const result = await this.userService.uploadAvatar(id, file);

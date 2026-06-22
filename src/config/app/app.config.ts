@@ -1,5 +1,5 @@
-import { API_BASE_URL, COMPANY_NAME, DEFAULT_PORT } from '@/common/constants';
-import { AppMode } from '@/common/enums';
+import { API_BASE_URL, COMPANY_NAME, DEFAULT_PORT } from './app.constant';
+import { AppMode } from '@/config/app/enums';
 import { registerAs } from '@nestjs/config';
 
 export default registerAs('app', () => {
@@ -15,5 +15,6 @@ export default registerAs('app', () => {
     apiBaseUrl: process.env.API_BASE_URL || API_BASE_URL,
     clientBaseUrl: process.env.CLIENT_BASE_URL || 'http://localhost:3000',
     companyName: process.env.COMPANY_NAME || COMPANY_NAME,
+    hibpEnabled: process.env.HIBP_CHECK_ENABLED !== 'false',
   };
 });

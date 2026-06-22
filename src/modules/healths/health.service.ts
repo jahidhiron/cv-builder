@@ -11,6 +11,13 @@ import {
 } from '@/modules/healths/providers';
 import { Injectable } from '@nestjs/common';
 
+/**
+ * Facade service for the health-check domain.
+ *
+ * Exposes database and RabbitMQ diagnostic endpoints consumed by the health
+ * controller and internal monitoring. Delegates to dedicated providers rather
+ * than querying infrastructure directly.
+ */
 @Injectable()
 export class HealthService {
   constructor(

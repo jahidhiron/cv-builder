@@ -1,5 +1,6 @@
-import { UserPayload } from '@/modules/auth/interfaces';
+import type { UserPayload } from '@/modules/auth/interfaces';
 import { AssignPermissionsDto, CreatePermissionDto, PermissionListQueryDto, UpdatePermissionDto } from '@/modules/permissions/dtos';
+import { Permission } from '@/modules/permissions/entities/permission.entity';
 import {
   AssignRolePermissionsProvider,
   CreatePermissionProvider,
@@ -11,7 +12,15 @@ import {
   UpdatePermissionProvider,
 } from '@/modules/permissions/providers';
 import { Injectable } from '@nestjs/common';
+import type { FindOptionsWhere } from 'typeorm';
 
+/**
+ * Facade service for the permissions domain.
+ *
+ * Delegates each operation to its dedicated provider. Permission management is
+ * intentionally separate from roles so that permissions can be defined independently
+ * and then assigned to roles via the role–permission join table.
+ */
 @Injectable()
 export class PermissionService {
   constructor(
@@ -25,40 +34,49 @@ export class PermissionService {
     private readonly removeRolePermissionProvider: RemoveRolePermissionProvider,
   ) {}
 
-  async findOne(id: number) {
-    const permission = await this.findOnePermissionProvider.execute({ id });
+  /** Retrieve a single permission by any condition. Throws 404 when not found. */
+  async findOne(where: FindOptionsWhere<Permission>) {
+    const permission = await this.findOnePermissionProvider.execute(where);
     return { permission };
   }
 
-  async create(dto: CreatePermissionDto, user: UserPayload) {
-    const permission = await this.createPermissionProvider.execute(dto, user.id);
+  /** Create a new permission. The request-scoped provider stamps `createdBy` from the current user. */
+  async create(dto: CreatePermissionDto) {
+    const permission = await this.createPermissionProvider.execute(dto);
     return { permission };
   }
 
-  async update(id: number, dto: UpdatePermissionDto, user: UserPayload) {
-    const permission = await this.updatePermissionProvider.execute(id, dto, user.id);
+  /** Update an existing permission. The request-scoped provider stamps `updatedBy` from the current user. */
+  async update(where: FindOptionsWhere<Permission>, dto: UpdatePermissionDto) {
+    const permission = await this.updatePermissionProvider.execute(where, dto);
     return { permission };
   }
 
-  remove(id: number) {
-    return this.deletePermissionProvider.execute(id);
+  /** Permanently delete a permission. Throws 404 when not found, 403 for protected keys. */
+  remove(where: FindOptionsWhere<Permission>, user: UserPayload) {
+    // Permission has no soft-delete columns — force=true always uses hard delete.
+    return this.deletePermissionProvider.execute(where, user.id, true);
   }
 
+  /** Return a paginated list of permissions matching the given query. */
   list(dto: PermissionListQueryDto) {
     return this.listPermissionsProvider.execute(dto);
   }
 
+  /** List all permissions currently assigned to the given role. */
   async getRolePermissions(roleId: number) {
     const permissions = await this.listRolePermissionsProvider.execute(roleId);
     return { permissions };
   }
 
+  /** Assign one or more permissions to a role. */
   async assignRolePermissions(roleId: number, dto: AssignPermissionsDto) {
-    const assigned = await this.assignRolePermissionsProvider.execute(roleId, dto);
+    const assigned = await this.assignRolePermissionsProvider.execute({ roleId, dto });
     return { assigned };
   }
 
-  removeRolePermission(roleId: number, permissionId: number) {
-    return this.removeRolePermissionProvider.execute(roleId, permissionId);
+  /** Remove a single permission from a role. */
+  removeRolePermission(roleId: number, permissionId: number, user: UserPayload) {
+    return this.removeRolePermissionProvider.execute({ roleId, permissionId }, user.id, true);
   }
 }

@@ -7,10 +7,24 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { BaseAuthGuard } from './base-auth.guard';
 
+/**
+ * Guards HTTP routes that require a valid JWT access token.
+ *
+ * Token resolution order (first match wins):
+ * 1. `accessToken` cookie — preferred for browser clients.
+ * 2. `Authorization: Bearer <token>` header — for API/mobile clients.
+ *
+ * Additional checks:
+ * - The token must not appear in the Redis blacklist (set on logout / token rotation).
+ * - The token must pass JWT signature and expiry verification against `accessSecret`.
+ *
+ * On success, attaches `request.user` as a {@link UserPayload} so downstream
+ * handlers and other guards can access the authenticated identity.
+ */
 @Injectable()
 export class JwtAuthGuard extends BaseAuthGuard {
   constructor(
-    protected readonly reflector: Reflector,
+    protected override readonly reflector: Reflector,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly redisService: RedisService,
@@ -40,7 +54,7 @@ export class JwtAuthGuard extends BaseAuthGuard {
         secret: this.configService.jwt.accessSecret,
       });
       request.user = {
-        id: payload.sub,
+        id: Number(payload.sub),
         name: payload.name,
         email: payload.email,
         roleId: payload.roleId,

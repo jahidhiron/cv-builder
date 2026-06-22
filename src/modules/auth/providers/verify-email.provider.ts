@@ -1,4 +1,4 @@
-import { ModuleName } from '@/common/enums';
+import { ModuleName } from '@/common/base/enums';
 import { TokenType } from '@/modules/auth/enums';
 import { VerificationTokenPayload } from '@/modules/auth/interfaces';
 import { VerifyTokenProvider } from '@/modules/auth/providers/verify-token.provider';
@@ -7,6 +7,13 @@ import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
 import { VerifyEmailDto } from '../dtos';
 
+/**
+ * Marks a user's email as verified after consuming a valid one-time token.
+ *
+ * Delegates token validation to {@link VerifyTokenProvider} then updates
+ * `emailVerified` and `emailVerifiedAt` on the user record.
+ * Rejects tokens that have already been used (i.e. `user.emailVerified === true`).
+ */
 @Injectable({ scope: Scope.REQUEST })
 export class VerifyEmailProvider {
   constructor(

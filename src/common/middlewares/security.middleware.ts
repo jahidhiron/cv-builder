@@ -1,30 +1,22 @@
+import { ALLOW_METHODS } from '@/config/cors/cors.constant';
+import { isOriginAllowed } from '@/config/cors';
 import { INestApplication } from '@nestjs/common';
 import helmet from 'helmet';
-import { isOriginAllowed } from '../../config/cors';
-import { ALLOW_METHODS } from '../constants';
 
 /**
- * Configures security middleware for a NestJS application.
- *
- * This function sets up:
- * - **Helmet** to secure HTTP headers against common attacks.
- * - **CORS** with a custom origin validation callback to allow only trusted domains.
- *
- * @param {INestApplication} app - The NestJS application instance.
- *
- * @remarks
- * - Helmet's `contentSecurityPolicy` is disabled for API-only applications.
- * - CORS allows requests from origins validated by {@link isOriginAllowed}.
- * - Requests from unauthorized origins will be rejected with a CORS error.
- * - You can customize allowed HTTP methods via the {@link ALLOW_METHODS} constant.
- *
+ * Applies Helmet security headers and CORS to the application.
+ * CSP is disabled for API-only use; HSTS is enabled only in production
+ * so local development over HTTP is not broken by browser HSTS caching.
  */
-export function setupSecurity(app: INestApplication): void {
-  // Helmet middleware for securing HTTP headers
+export function setupSecurity(app: INestApplication, isProd = false): void {
   app.use(
     helmet({
       contentSecurityPolicy: false,
-      hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+      // HSTS only in production — browsers that cache an HSTS policy refuse
+      // plain-HTTP connections, which breaks local dev over http://localhost.
+      hsts: isProd
+        ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
+        : false,
       frameguard: { action: 'deny' },
       hidePoweredBy: true,
       referrerPolicy: { policy: 'no-referrer' },
@@ -35,16 +27,9 @@ export function setupSecurity(app: INestApplication): void {
     }),
   );
 
-  // Enable CORS with custom origin check
   app.enableCors({
-    origin: (
-      origin: string | undefined,
-      callback: (err: Error | null, allow?: boolean) => void,
-    ) => {
-      if (isOriginAllowed(origin)) {
-        return callback(null, true);
-      }
-      callback(new Error(`CORS policy: Origin ${origin} not allowed`));
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      callback(null, isOriginAllowed(origin));
     },
     methods: ALLOW_METHODS,
     credentials: true,

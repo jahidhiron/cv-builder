@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { randomBytes } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { HASH_ENCODING_FORMAT, HASH_KEY_LENGTH, HASH_SALT_BYTE_SIZE } from './hash.constants';
 import { scryptAsync } from './hash.utils';
 
@@ -47,7 +47,9 @@ export class HashService {
       const salt = stored.substring(idx + 1);
 
       const buf = await scryptAsync(supplied, salt, this.keyLength);
-      return buf.toString(this.format) === hashed;
+      const derived = buf.toString(this.format);
+      if (derived.length !== hashed.length) return false;
+      return timingSafeEqual(Buffer.from(derived), Buffer.from(hashed));
     } catch {
       return false;
     }

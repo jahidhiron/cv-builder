@@ -14,7 +14,10 @@
     "expired-refresh-token": "Refresh token has expired",
     "match-old-password": "New password cannot be the same as the current password",
     "old-password-not-match": "Current password is incorrect",
-    "no-password-set": "No password set for this account. Use Google sign-in or reset your password"
+    "no-password-set": "No password set for this account. Use Google sign-in or reset your password",
+    "session-expired": "Your session has expired. Please sign in again",
+    "password-previously-used": "This password was used recently. Please choose a different password",
+    "password-breached": "This password has appeared in a known data breach. Please choose a stronger password"
   },
   "success": {
     "signup": "Account created successfully. Please check your email to verify your account",
@@ -25,6 +28,8 @@
     "verification-sent": "Verification email sent successfully",
     "forgot-password-token": "If an account exists with this email, a password reset link has been sent",
     "password-reset": "Password reset successfully",
-    "change-password": "Password changed successfully"
+    "change-password": "Password changed successfully",
+    "list-sessions": "Sessions retrieved successfully",
+    "session-revoked": "Session revoked successfully"
   }
 }

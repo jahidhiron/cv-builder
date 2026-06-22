@@ -6,3 +6,5 @@ export * from './restore-user.provider';
 export * from './toggle-user-status.provider';
 export * from './update-user.provider';
 export * from './upload-avatar.provider';
+export * from './user-exist.provider';
+

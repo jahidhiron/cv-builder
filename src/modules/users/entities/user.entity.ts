@@ -1,7 +1,15 @@
-import { BaseSoftDeleteEntity } from '@/common/entities';
+﻿import { BaseSoftDeleteEntity } from '@/common/base/entities';
 import { Role } from '@/modules/roles/entities/role.entity';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
+/**
+ * Core user entity for the CV Builder platform.
+ *
+ * Notable design decisions:
+ * - `googleId` is set for OAuth users; these accounts have no `password`.
+ * - `failedAttempts` + `lockedUntil` implement brute-force lock-out logic in `SigninProvider`.
+ * - `isActive` allows manual suspension without deleting the record.
+ */
 @Entity('users')
 export class User extends BaseSoftDeleteEntity {
   @Column({ type: 'bigint' })
@@ -17,7 +25,7 @@ export class User extends BaseSoftDeleteEntity {
   @Column({ length: 255, unique: true })
   email!: string;
 
-  @Column({ type: 'text', nullable: true, select: false })
+  @Column({ type: 'text', nullable: true })
   password?: string | null;
 
   @Column({ length: 255 })

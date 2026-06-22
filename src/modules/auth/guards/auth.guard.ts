@@ -6,18 +6,29 @@ import { Request } from 'express';
 import { BaseAuthGuard } from './base-auth.guard';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
+/**
+ * Composite authentication guard used as the global default.
+ *
+ * Reads the `AUTH_TYPE_KEY` metadata from the route handler:
+ * - `AuthType.None` / `AuthType.Optional` — handled by {@link BaseAuthGuard}.
+ * - `AuthType.Bearer` (default) — resolves a request-scoped `JwtAuthGuard`
+ *   via `ModuleRef` and delegates token validation to it.
+ *
+ * The guard is applied globally in the module setup, so all routes are protected
+ * by default; use `@Auth(AuthType.None)` to mark public endpoints.
+ */
 @Injectable()
 export class AuthGuard extends BaseAuthGuard {
   private static readonly defaultAuthTypes = [AuthType.Bearer];
 
   constructor(
     private readonly moduleRef: ModuleRef,
-    protected readonly reflector: Reflector,
+    protected override readonly reflector: Reflector,
   ) {
     super(reflector);
   }
 
-  protected async handleOptional(context: ExecutionContext): Promise<boolean> {
+  protected override async handleOptional(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const auth = request.headers.authorization;
     const cookieToken = request.cookies?.accessToken as string | undefined;

@@ -26,6 +26,14 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
 import { CookieResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 
+/**
+ * Root configuration module that bootstraps all environment-based config services.
+ *
+ * Registers NestJS `ConfigModule` (global), `I18nModule`, and `WinstonModule`,
+ * then provides the per-domain config service wrappers (`AppConfigService`,
+ * `DbConfigService`, etc.) so any feature module can inject them without
+ * importing this module directly.
+ */
 @Module({
   imports: [
     NestConfigModule.forRoot({
@@ -59,7 +67,7 @@ import { CookieResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestj
 
     WinstonModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: createWinstonLoggerConfig,
+      useFactory: (config: ConfigService) => createWinstonLoggerConfig(config.app),
       inject: [ConfigService],
     }),
   ],

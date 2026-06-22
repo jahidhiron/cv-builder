@@ -1,27 +1,17 @@
-import { ModuleName } from '@/common/enums';
+import { ModuleName } from '@/common/base/enums';
+import { BaseRestoreProvider } from '@/common/base';
 import { Role } from '@/modules/roles/entities/role.entity';
 import { RoleRepository } from '@/modules/roles/repositories/role.repository';
 import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
 
+/**
+ * Restores a previously soft-deleted role.
+ * Throws 400 if the role is not in a deleted state.
+ */
 @Injectable({ scope: Scope.REQUEST })
-export class RestoreRoleProvider {
-  constructor(
-    private readonly roleRepo: RoleRepository,
-    private readonly errorResponse: ErrorResponse,
-  ) {}
-
-  async execute(id: number): Promise<Role> {
-    const role = await this.roleRepo.findOne({ id });
-
-    if (!role) {
-      await this.errorResponse.notFound({ module: ModuleName.Role, key: 'role-not-found' });
-    }
-    if (!role!.isDeleted) {
-      await this.errorResponse.badRequest({ module: ModuleName.Role, key: 'role-not-archived' });
-    }
-
-    const restored = await this.roleRepo.restore({ id });
-    return restored!;
+export class RestoreRoleProvider extends BaseRestoreProvider<Role> {
+  constructor(repo: RoleRepository, errorResponse: ErrorResponse) {
+    super(ModuleName.Role, repo, errorResponse);
   }
 }

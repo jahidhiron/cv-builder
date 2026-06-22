@@ -1,7 +1,17 @@
-import { BaseEntity } from '@/common/entities';
+﻿import { BaseEntity } from '@/common/base/entities';
 import { User } from '@/modules/users/entities/user.entity';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
+/**
+ * One-time verification token used for email confirmation and password reset.
+ *
+ * `type` discriminates between flows: `"email_verification"` or `"password_reset"`.
+ * `applied` is set to `true` when the token has been consumed (action executed).
+ * `verified` is set to `true` after the token is validated but before the action
+ * completes (e.g. password-reset token is verified before the new password is saved).
+ *
+ * Tokens are deleted from the DB once successfully consumed by `VerifyTokenProvider`.
+ */
 @Entity('verification_tokens')
 export class VerificationToken extends BaseEntity {
   @Column({ length: 255 })

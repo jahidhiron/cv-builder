@@ -1,24 +1,30 @@
-import { HTTP_STATUS } from '@/common/constants';
-import { SwaggerApiSuccessResponse } from '@/common/decorators';
-import { HttpMethod, ModuleName } from '@/common/enums';
+import { HTTP_STATUS } from '@/shared/response/constants';
+import { SwaggerApiSuccessResponse } from '@/common/swagger';
+import { HttpMethod } from '@/common/swagger/enums';
+import { ModuleName } from '@/common/base/enums';
 import { InternalServerErrorResponse, UnauthorizedResponse } from '@/common/swagger';
-import { LogoutQueryDto } from '@/modules/auth/dtos/logout-query.dto';
 import { applyDecorators } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 
 export function LogoutSwaggerDocs() {
   const path = `${ModuleName.Auth}/logout`;
-  const method = HttpMethod.GET;
+  const method = HttpMethod.POST;
 
   return applyDecorators(
     ApiBearerAuth(),
 
     ApiOperation({
-      summary: 'Logout the current user',
-      description: 'Invalidates the session. Use ?from=all to logout from all devices, or ?from=others to keep the current session.',
+      summary: 'Logout',
+      description:
+        'Invalidates the current session (`type=current`, default) or all active sessions across every device (`type=all`).',
     }),
 
-    ApiQuery({ name: 'from', required: false, type: String, enum: ['current', 'all', 'others'], description: 'Which sessions to invalidate' }),
+    ApiQuery({
+      name: 'type',
+      required: false,
+      enum: ['current', 'all'],
+      description: 'Which sessions to invalidate. Defaults to `current`.',
+    }),
 
     SwaggerApiSuccessResponse(null, {
       method,

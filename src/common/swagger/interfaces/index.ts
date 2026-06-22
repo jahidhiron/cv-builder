@@ -1,1 +1,1 @@
-export * from './swagger-response-option.interface';
+export * from './swagger-response-options.interface';

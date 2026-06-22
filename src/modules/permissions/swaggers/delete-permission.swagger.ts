@@ -1,10 +1,20 @@
-import { HTTP_STATUS } from '@/common/constants';
-import { SwaggerApiSuccessResponse } from '@/common/decorators';
-import { HttpMethod, ModuleName } from '@/common/enums';
+import { HTTP_STATUS } from '@/shared/response/constants';
+import { SwaggerApiSuccessResponse } from '@/common/swagger';
+import { HttpMethod } from '@/common/swagger/enums';
+import { ModuleName } from '@/common/base/enums';
 import { ForbiddenResponse, InternalServerErrorResponse, NotFoundResponse, UnauthorizedResponse } from '@/common/swagger';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam } from '@nestjs/swagger';
 
+/**
+ * Composed Swagger decorator for the `DELETE /permissions/:id` endpoint.
+ *
+ * Attaches the operation summary, `:id` path parameter, 200 success response,
+ * and all documented error responses (401, 403, 404, 500) to the controller action.
+ * The 403 case covers system-protected permission keys that cannot be removed.
+ *
+ * @returns A NestJS `MethodDecorator` produced by `applyDecorators`.
+ */
 export function DeletePermissionSwaggerDocs() {
   const path = `${ModuleName.Permission}/:id`;
   const method = HttpMethod.DELETE;

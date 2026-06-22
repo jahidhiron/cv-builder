@@ -1,28 +1,24 @@
-import { ModuleName } from '@/common/enums';
-import { FindOneRoleProvider } from '@/modules/roles/providers/find-one-role.provider';
+import { ModuleName } from '@/common/base/enums';
+import { BaseDeleteProvider } from '@/common/base';
+import { Role } from '@/modules/roles/entities/role.entity';
 import { RoleRepository } from '@/modules/roles/repositories/role.repository';
 import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
 
+/**
+ * Soft- or hard-deletes a role.
+ * Guards the system-reserved `"user"` and `"admin"` roles — any attempt to delete
+ * them results in a 403 Forbidden error.
+ */
 @Injectable({ scope: Scope.REQUEST })
-export class DeleteRoleProvider {
-  constructor(
-    private readonly roleRepo: RoleRepository,
-    private readonly findOneRole: FindOneRoleProvider,
-    private readonly errorResponse: ErrorResponse,
-  ) {}
+export class DeleteRoleProvider extends BaseDeleteProvider<Role> {
+  constructor(repo: RoleRepository, errorResponse: ErrorResponse) {
+    super(ModuleName.Role, repo, errorResponse);
+  }
 
-  async execute(id: number, userId: number, force = false): Promise<void> {
-    const role = await this.findOneRole.execute({ id });
-
-    if (['user', 'admin'].includes(role.key)) {
-      await this.errorResponse.forbidden({ module: ModuleName.Role, key: 'role-protected' });
-    }
-
-    if (force) {
-      await this.roleRepo.remove({ id });
-    } else {
-      await this.roleRepo.softDelete({ id }, userId);
+  protected override async beforeDelete(role: Role): Promise<void> {
+    if (['user', 'admin'].includes(role.name.toLowerCase())) {
+      await this.errorResponse.forbidden({ module: this.module, key: 'role-protected' });
     }
   }
 }

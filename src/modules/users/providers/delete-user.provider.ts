@@ -1,22 +1,30 @@
-import { ModuleName } from '@/common/enums';
+import { ModuleName } from '@/common/base/enums';
+import { BaseDeleteProvider } from '@/common/base';
+import { UserPayload } from '@/modules/auth/interfaces';
+import { User } from '@/modules/users/entities/user.entity';
 import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { ErrorResponse } from '@/shared/response';
-import { Injectable, Scope } from '@nestjs/common';
+import { Inject, Injectable, Scope } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
+import type { Request } from 'express';
 
+/**
+ * Soft- or hard-deletes a user.
+ * When `force = true`, the record is permanently removed from the database.
+ */
 @Injectable({ scope: Scope.REQUEST })
-export class DeleteUserProvider {
+export class DeleteUserProvider extends BaseDeleteProvider<User> {
   constructor(
-    private readonly userRepo: UserRepository,
-    private readonly errorResponse: ErrorResponse,
-  ) {}
+    repo: UserRepository,
+    errorResponse: ErrorResponse,
+    @Inject(REQUEST) private readonly request: Request & { user?: UserPayload },
+  ) {
+    super(ModuleName.User, repo, errorResponse);
+  }
 
-  async execute(id: number, currentUserId: number, force = false): Promise<void> {
-    const user = force
-      ? await this.userRepo.remove({ id })
-      : await this.userRepo.softDelete({ id }, currentUserId);
-
-    if (!user) {
-      await this.errorResponse.notFound({ module: ModuleName.User, key: 'user-not-found' });
+  protected override async beforeDelete(entity: User): Promise<void> {
+    if (entity.id === this.request.user?.id) {
+      await this.errorResponse.forbidden({ module: ModuleName.User, key: 'self-delete' });
     }
   }
 }

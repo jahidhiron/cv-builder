@@ -174,6 +174,12 @@ importers:
       '@types/node':
         specifier: ^22.10.7
         version: 22.18.9
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
+      '@types/qs':
+        specifier: ^6.15.1
+        version: 6.15.1
       '@types/socket.io':
         specifier: ^3.0.2
         version: 3.0.2
@@ -1290,8 +1296,11 @@ packages:
   '@types/node@22.18.9':
     resolution: {integrity: sha512-5yBtK0k/q8PjkMXbTfeIEP/XVYnz1R9qZJ3yUicdEW7ppdDJfe+MqXEhpqDL3mtn4Wvs1u0KLEG0RXzCgNpsSg==}
 
-  '@types/qs@6.14.0':
-    resolution: {integrity: sha512-eOunJqu0K1923aExK6y8p6fsihYEn/BYuQ4g0CxAAgFc4b/ZLN4CrsRZ55srTdqoiLzU2B2evC+apEIxprEzkQ==}
+  '@types/pg@8.20.0':
+    resolution: {integrity: sha512-bEPFOaMAHTEP1EzpvHTbmwR8UsFyHSKsRisLIHVMXnpNefSbGA1bD6CVy+qKjGSqmZqNqBDV2azOBo8TgkcVow==}
+
+  '@types/qs@6.15.1':
+    resolution: {integrity: sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==}
 
   '@types/range-parser@1.2.7':
     resolution: {integrity: sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ==}
@@ -5519,7 +5528,7 @@ snapshots:
   '@types/express-serve-static-core@5.1.0':
     dependencies:
       '@types/node': 22.18.9
-      '@types/qs': 6.14.0
+      '@types/qs': 6.15.1
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.0
 
@@ -5569,7 +5578,13 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/qs@6.14.0': {}
+  '@types/pg@8.20.0':
+    dependencies:
+      '@types/node': 22.18.9
+      pg-protocol: 1.14.0
+      pg-types: 2.2.0
+
+  '@types/qs@6.15.1': {}
 
   '@types/range-parser@1.2.7': {}
 

@@ -1,7 +1,16 @@
-import { BaseEntity } from '@/common/entities';
+﻿import { BaseEntity } from '@/common/base/entities';
 import { User } from '@/modules/users/entities/user.entity';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
+/**
+ * Immutable audit record of a sign-in or sign-out event.
+ *
+ * `loggedInAt` is set on sign-in; `loggedOutAt` is set on logout.
+ * `deviceInfo` and `clientLocation` are stored as free-form JSONB for
+ * future extensibility without schema migrations.
+ * `familyId` links the history entry to the refresh-token family so that
+ * device-level session activity can be correlated.
+ */
 @Entity('login_histories')
 export class LoginHistory extends BaseEntity {
   @Column({ type: 'bigint' })

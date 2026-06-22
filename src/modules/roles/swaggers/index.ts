@@ -6,4 +6,5 @@ export * from './get-role-permissions.swagger';
 export * from './list-roles.swagger';
 export * from './remove-role-permission.swagger';
 export * from './restore-role.swagger';
+export * from './sync-admin-permissions.swagger';
 export * from './update-role.swagger';

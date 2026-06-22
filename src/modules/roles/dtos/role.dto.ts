@@ -1,14 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+/** Full representation of a role as returned by the API. */
 export class RoleDto {
   @ApiProperty({ example: 1 })
   id!: number;
 
   @ApiProperty({ example: 'Admin' })
   name!: string;
-
-  @ApiProperty({ example: 'admin' })
-  key!: string;
 
   @ApiPropertyOptional({ example: 'Administrator role', nullable: true })
   description?: string | null;

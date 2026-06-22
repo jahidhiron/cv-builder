@@ -1,20 +1,22 @@
-import { ModuleName } from '@/common/enums';
+import { ModuleName } from '@/common/base/enums';
+import { BaseDeleteProvider } from '@/common/base';
+import { RolePermission } from '@/modules/permissions/entities/role-permission.entity';
 import { RolePermissionRepository } from '@/modules/permissions/repositories/role-permission.repository';
 import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
 
+/**
+ * Revokes a permission from a role by removing the `RolePermission` join-table entry.
+ * Always performs a hard delete since `RolePermission` has no soft-delete columns.
+ * Throws 404 when the role–permission assignment does not exist.
+ */
 @Injectable({ scope: Scope.REQUEST })
-export class RemoveRolePermissionProvider {
-  constructor(
-    private readonly rolePermissionRepo: RolePermissionRepository,
-    private readonly errorResponse: ErrorResponse,
-  ) {}
+export class RemoveRolePermissionProvider extends BaseDeleteProvider<RolePermission> {
+  protected override get entityName(): string {
+    return 'role-permission';
+  }
 
-  async execute(roleId: number, permissionId: number): Promise<void> {
-    const entry = await this.rolePermissionRepo.findOne({ roleId, permissionId });
-    if (!entry) {
-      await this.errorResponse.notFound({ module: ModuleName.Permission, key: 'role-permission-not-found' });
-    }
-    await this.rolePermissionRepo.remove({ roleId, permissionId });
+  constructor(repo: RolePermissionRepository, errorResponse: ErrorResponse) {
+    super(ModuleName.Permission, repo, errorResponse);
   }
 }

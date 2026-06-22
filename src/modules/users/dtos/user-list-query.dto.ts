@@ -1,24 +1,10 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsSortableColumn } from '@/common/base/dtos/decorators/is-sortable-column.decorator';
+import { ListOptionsDto } from '@/common/base/dtos/list-options.dto';
+import { USER_SORTABLE_COLUMNS } from '@/modules/users/constants/user.constant';
+import type { SortByDto } from '@/common/base/dtos/sort-by.dto';
 
-export class UserListQueryDto {
-  @ApiPropertyOptional({ example: 1 })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Type(() => Number)
-  page?: number;
-
-  @ApiPropertyOptional({ example: 10 })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Type(() => Number)
-  limit?: number;
-
-  @ApiPropertyOptional({ example: 'john' })
-  @IsOptional()
-  @IsString()
-  q?: string;
+/** Query parameters for paginating, searching, and sorting the user list. */
+export class UserListQueryDto extends ListOptionsDto {
+  @IsSortableColumn([...USER_SORTABLE_COLUMNS])
+  declare sortBy?: SortByDto[];
 }

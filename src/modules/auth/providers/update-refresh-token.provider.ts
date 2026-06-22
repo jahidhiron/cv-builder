@@ -1,16 +1,18 @@
+import { ModuleName } from '@/common/base/enums';
+import { BaseUpdateProvider } from '@/common/base/providers/base-update.provider';
 import { RefreshToken } from '@/modules/auth/entities/refresh-token.entity';
 import { RefreshTokenRepository } from '@/modules/auth/repositories';
+import { ErrorResponse } from '@/shared/response';
 import { Injectable } from '@nestjs/common';
-import { FindOptionsWhere } from 'typeorm';
+import type { DeepPartial } from 'typeorm';
 
+/**
+ * Updates a refresh token record matching the given conditions.
+ * Used to stamp `revokedAt` and `revokedReason` during logout and token rotation.
+ */
 @Injectable()
-export class UpdateRefreshTokenProvider {
-  constructor(private readonly refreshTokenRepo: RefreshTokenRepository) {}
-
-  async execute(
-    where: FindOptionsWhere<RefreshToken>,
-    data: Partial<RefreshToken>,
-  ): Promise<void> {
-    await this.refreshTokenRepo.updateMany(where, data);
+export class UpdateRefreshTokenProvider extends BaseUpdateProvider<RefreshToken, DeepPartial<RefreshToken>> {
+  constructor(repo: RefreshTokenRepository, errorResponse: ErrorResponse) {
+    super(ModuleName.Auth, repo, errorResponse);
   }
 }

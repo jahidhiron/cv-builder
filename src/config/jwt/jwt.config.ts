@@ -9,4 +9,6 @@ export default registerAs('jwt', () => ({
   accessTokenExpiredIn: parseInt(process.env.JWT_ACCESS_EXPIRES_IN_SECONDS ?? '900', 10),
   /** Refresh token lifetime in seconds */
   refreshTokenExpiredIn: parseInt(process.env.JWT_REFRESH_EXPIRES_IN_SECONDS ?? '604800', 10),
+  /** Maximum continuous session lifetime in days regardless of refresh rotations */
+  maxSessionDays: parseInt(process.env.JWT_MAX_SESSION_DAYS ?? '30', 10),
 }));

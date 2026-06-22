@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Sign-in Detected</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f4f4f7; font-family: Arial, sans-serif; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; }
+    .header { background-color: #dc2626; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #ffffff; margin: 0; font-size: 24px; }
+    .body { padding: 40px; color: #374151; }
+    .body p { line-height: 1.6; margin: 0 0 16px; }
+    .info-box { background-color: #f9fafb; border-left: 4px solid #dc2626; padding: 16px 20px; border-radius: 4px; margin: 24px 0; }
+    .info-box table { width: 100%; border-collapse: collapse; }
+    .info-box td { padding: 4px 0; font-size: 14px; color: #374151; }
+    .info-box td:first-child { font-weight: bold; width: 110px; color: #6b7280; }
+    .footer { padding: 24px 40px; background-color: #f9fafb; text-align: center; color: #6b7280; font-size: 12px; }
+    .footer a { color: #4f46e5; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      {{#if logoUrl}}<img src="{{logoUrl}}" alt="{{companyName}}" height="40" style="margin-bottom:12px;" /><br />{{/if}}
+      <h1>New Sign-in Detected</h1>
+    </div>
+    <div class="body">
+      <p>Hi {{name}},</p>
+      <p>We detected a new sign-in to your <strong>{{companyName}}</strong> account from an unrecognised device or browser.</p>
+      <div class="info-box">
+        <table>
+          <tr><td>Date</td><td>{{signedInAt}}</td></tr>
+          {{#if ip}}<tr><td>IP Address</td><td>{{ip}}</td></tr>{{/if}}
+          {{#if userAgent}}<tr><td>Browser</td><td>{{userAgent}}</td></tr>{{/if}}
+        </table>
+      </div>
+      <p>If this was you, no action is required.</p>
+      <p>If you did <strong>not</strong> sign in recently, your account may be compromised. Please change your password immediately and contact us at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a>.</p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} {{companyName}}. All rights reserved. |
+      <a href="mailto:{{supportEmail}}">{{supportEmail}}</a>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "error": {
+    "rate-limited": "Too many requests. Please try again in {retryAfter} seconds."
+  }
+}

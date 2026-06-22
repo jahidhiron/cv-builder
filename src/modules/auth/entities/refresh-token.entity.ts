@@ -1,40 +1,43 @@
+﻿import { BaseEntity } from '@/common/base/entities';
 import { User } from '@/modules/users/entities/user.entity';
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
+/**
+ * Represents a persisted refresh token (stored as a scrypt hash, never plaintext).
+ *
+ * `familyId` groups all tokens issued for the same device fingerprint (base64 of
+ * IP + UA). When token reuse is detected, the entire family is revoked to invalidate
+ * all sessions on that device.
+ *
+ * `revokedAt` / `revokedReason` form a soft-revocation audit trail — rows are only
+ * hard-deleted in bulk by `CleanupRefreshTokenProvider` at sign-in time.
+ */
 @Entity('refresh_tokens')
-export class RefreshToken {
-  @PrimaryGeneratedColumn()
-  id: number;
+export class RefreshToken extends BaseEntity {
+  @Column({ length: 255, unique: true })
+  tokenHash!: string;
 
-  @Column({ name: 'token_hash', length: 255, unique: true })
-  tokenHash: string;
-
-  @Column({ name: 'user_id', type: 'bigint' })
-  userId: number;
+  @Column({ type: 'bigint' })
+  userId!: number;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user!: User;
 
-  @Column({ name: 'family_id', type: 'varchar', length: 255, nullable: true })
-  familyId: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  familyId!: string | null;
 
-  @Column({ name: 'expires_at', type: 'timestamptz' })
-  expiresAt: Date;
+  @Column({ type: 'timestamptz' })
+  expiresAt!: Date;
 
-  @Column({ name: 'revoked_at', type: 'timestamptz', nullable: true })
-  revokedAt: Date | null;
+  /** When this device session started (copied from the first token in the family).
+   *  Used to enforce the absolute session max-lifetime regardless of rotation count. */
+  @Column({ type: 'timestamptz', nullable: true })
+  sessionStartedAt!: Date | null;
 
-  @Column({ name: 'revoked_reason', type: 'varchar', length: 100, nullable: true })
-  revokedReason: string | null;
+  @Column({ type: 'timestamptz', nullable: true })
+  revokedAt!: Date | null;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
-  createdAt: Date;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  revokedReason!: string | null;
 }

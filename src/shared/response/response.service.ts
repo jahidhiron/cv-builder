@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { HTTP_STATUS } from '@/common/constants';
+﻿/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { HTTP_STATUS } from './constants';
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import type { Request } from 'express';
@@ -11,7 +11,7 @@ import { ResponseParams } from './types';
  * Core request-scoped service that assembles {@link AppResponse} envelopes.
  *
  * Consumed internally by {@link SuccessResponse} and {@link ErrorResponse}.
- * Feature modules should not inject this service directly — use the typed helpers instead.
+ * Feature modules should not inject this service directly â€” use the typed helpers instead.
  *
  * Being request-scoped ensures that `method`, `path`, and the resolved i18n language
  * are always derived from the current HTTP request.
@@ -146,15 +146,13 @@ export class ResponseService {
     const { module, key, message: directMessage, args, ...rest } = params;
 
     let message: string;
-    if (directMessage) {
-      message = directMessage;
-    } else {
-      const msgKey = `${module}.error.${key}`;
-
-      message = await this.i18n.translate(msgKey, {
+    if (module && key) {
+      message = await this.i18n.translate(`${module}.error.${key}`, {
         lang: this.getLangFromRequest(),
         args,
       });
+    } else {
+      message = directMessage ?? 'Error';
     }
 
     return this.buildResponse<T>(false, status, message, rest as T);

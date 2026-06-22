@@ -1,0 +1,18 @@
+{
+  "error": {
+    "permission-not-found": "Permission not found",
+    "permission-key-exists": "A permission with this key already exists",
+    "permission-protected": "Built-in permissions cannot be deleted",
+    "role-permission-not-found": "This permission is not assigned to the role"
+  },
+  "success": {
+    "create-permission": "Permission created successfully",
+    "update-permission": "Permission updated successfully",
+    "delete-permission": "Permission deleted successfully",
+    "permissions-list": "Permissions retrieved successfully",
+    "permission-detail": "Permission retrieved successfully",
+    "role-permissions-list": "Role permissions retrieved successfully",
+    "assign-permissions": "Permissions assigned successfully",
+    "remove-permission": "Permission removed from role successfully"
+  }
+}

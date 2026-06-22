@@ -1,4 +1,4 @@
-import { ModuleName } from '@/common/enums';
+import { ModuleName } from '@/common/base/enums';
 import { Auth } from '@/modules/auth/decorators';
 import { AuthType } from '@/modules/auth/enums';
 import { AppStatusSwaggerDocs } from '@/modules/app/swaggers';

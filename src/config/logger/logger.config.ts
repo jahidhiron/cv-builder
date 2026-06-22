@@ -1,63 +1,28 @@
-import { LOG_DIR_NAME } from '@/common/constants';
 import { AppConfigService } from '@/config/app';
 import * as winston from 'winston';
-import 'winston-daily-rotate-file';
+import { devFormat, fileTransport } from './logger.formats';
 
-const { combine, timestamp, colorize, printf, json, errors } = winston.format;
+const { combine, timestamp, errors, json } = winston.format;
 
 /**
- * Creates Winston logger configuration.
- * - Stores **only error logs** in daily rotated files.
- * - Console logs for development environment.
+ * Builds the Winston logger configuration for the current environment.
  *
- * @param {AppConfigService} appConfig - Application config service
- * @returns {winston.LoggerOptions} Winston logger options
+ * - **Development**: Console transport at `debug` level using a colorized,
+ *   human-readable format with stack traces on errors.
+ * - **Production**: Console transport at `error` level only, emitting JSON.
+ *   A rotating file transport (`error-*.log`) is always active, archiving
+ *   compressed logs daily and retaining them for 14 days.
+ *
+ * @param appConfig - Resolved app config service (used to detect `isProd`).
  */
-export const createWinstonLoggerConfig = (appConfig: AppConfigService) => {
-  // File transport for errors only (timestamp always included)
-  const dailyRotateFile = new winston.transports.DailyRotateFile({
-    dirname: LOG_DIR_NAME,
-    filename: 'error-%DATE%.log',
-    datePattern: 'YYYY-MM-DD',
-    zippedArchive: true,
-    maxSize: '20m',
-    maxFiles: '14d',
-    level: 'error',
-    format: combine(
-      timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-      errors({ stack: true }),
-      json(), // keeps timestamp in structured JSON logs
-    ),
-  });
-
-  // Console format for dev
-  const devFormat = combine(
-    colorize({ all: true }),
-    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    errors({ stack: true }),
-    printf(
-      (info: {
-        level: string;
-        message: string;
-        context?: string;
-        timestamp: string;
-        stack?: string;
-      }) => {
-        const { level, message, context, timestamp, stack } = info;
-        return `[${timestamp}] [${level}] [${context || 'App'}] ${message}${stack ? `\n${stack}` : ''}`;
-      },
-    ),
-  );
-
-  return {
-    transports: [
-      new winston.transports.Console({
-        level: appConfig.isProd ? 'error' : 'debug',
-        format: appConfig.isProd
-          ? combine(timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), errors({ stack: true }), json())
-          : devFormat,
-      }),
-      dailyRotateFile,
-    ],
-  };
-};
+export const createWinstonLoggerConfig = (appConfig: AppConfigService) => ({
+  transports: [
+    new winston.transports.Console({
+      level: appConfig.isProd ? 'error' : 'debug',
+      format: appConfig.isProd
+        ? combine(timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), errors({ stack: true }), json())
+        : devFormat,
+    }),
+    fileTransport,
+  ],
+});

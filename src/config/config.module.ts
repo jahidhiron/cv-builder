@@ -18,6 +18,7 @@ import { rabbitmqConfig, RabbitmqConfigService } from '@/config/rabbitmq';
 import { realtimeConfig, RealtimeConfigService } from '@/config/realtime';
 import { RedisConfigService } from '@/config/redis';
 import { redisConfig } from '@/config/redis/redis.config';
+import { StorageConfigService, storageConfig } from '@/config/storage';
 import { SwaggerConfigService } from '@/config/swagger';
 import swaggerConfig from '@/config/swagger/swagger.config';
 import { Module } from '@nestjs/common';
@@ -25,6 +26,14 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
 import { CookieResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 
+/**
+ * Root configuration module that bootstraps all environment-based config services.
+ *
+ * Registers NestJS `ConfigModule` (global), `I18nModule`, and `WinstonModule`,
+ * then provides the per-domain config service wrappers (`AppConfigService`,
+ * `DbConfigService`, etc.) so any feature module can inject them without
+ * importing this module directly.
+ */
 @Module({
   imports: [
     NestConfigModule.forRoot({
@@ -40,6 +49,7 @@ import { CookieResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestj
         redisConfig,
         mailConfig,
         cookieConfig,
+        storageConfig,
       ],
       validationSchema: envValidationSchema,
       validationOptions: { abortEarly: false },
@@ -57,7 +67,7 @@ import { CookieResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestj
 
     WinstonModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: createWinstonLoggerConfig,
+      useFactory: (config: ConfigService) => createWinstonLoggerConfig(config.app),
       inject: [ConfigService],
     }),
   ],
@@ -74,6 +84,7 @@ import { CookieResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestj
     RedisConfigService,
     MailConfigService,
     CookieConfigService,
+    StorageConfigService,
   ],
   exports: [ConfigService, AppLogger, CookieConfigService],
 })

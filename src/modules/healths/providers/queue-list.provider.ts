@@ -1,4 +1,4 @@
-import { ModuleName } from '@/common/enums';
+import { ModuleName } from '@/common/base/enums';
 import { ConfigService } from '@/config';
 import { AppLogger } from '@/config/logger';
 import { QueueDto, QueueListResponseDto } from '@/modules/healths/dtos';

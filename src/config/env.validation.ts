@@ -2,6 +2,16 @@ import * as Joi from 'joi';
 
 const isProdLike = ['production', 'staging'];
 
+/**
+ * Joi schema that validates all environment variables at application startup
+ * (consumed by `ConfigModule.forRoot({ validationSchema })`).
+ *
+ * Key conditional rules:
+ * - `DATABASE_URL` makes individual `PG_*` vars optional (cloud connection string takes precedence).
+ * - `ENABLE_SWAGGER_PROTECTION=true` requires `SWAGGER_USER` and `SWAGGER_PASSWORD`.
+ * - `ENABLE_RABBITMQ=true` requires `RABBITMQ_URI`.
+ * - `R2_ENDPOINT` being set requires all four R2 credentials, preventing silent misconfiguration.
+ */
 export const envValidationSchema = Joi.object({
   APPLICATION_MODE: Joi.string()
     .valid('development', 'staging', 'production', 'test')
@@ -87,12 +97,21 @@ export const envValidationSchema = Joi.object({
 
   CLIENT_BASE_URL: Joi.string().uri().default('http://localhost:3000'),
 
-  JWT_ACCESS_SECRET: Joi.string().required(),
-  JWT_REFRESH_SECRET: Joi.string().required(),
+  JWT_ACCESS_SECRET: Joi.when('APPLICATION_MODE', {
+    is: Joi.valid(...isProdLike),
+    then: Joi.string().min(32).required(),
+    otherwise: Joi.string().required(),
+  }),
+  JWT_REFRESH_SECRET: Joi.when('APPLICATION_MODE', {
+    is: Joi.valid(...isProdLike),
+    then: Joi.string().min(32).required(),
+    otherwise: Joi.string().required(),
+  }),
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
   JWT_ACCESS_EXPIRES_IN_SECONDS: Joi.number().default(900),
   JWT_REFRESH_EXPIRES_IN_SECONDS: Joi.number().default(604800),
+  JWT_MAX_SESSION_DAYS: Joi.number().integer().min(1).default(30),
 
   GOOGLE_CLIENT_ID: Joi.string().optional().allow('', null),
   GOOGLE_CLIENT_SECRET: Joi.string().optional().allow('', null),
@@ -111,8 +130,31 @@ export const envValidationSchema = Joi.object({
   MAILGUN_FROM_NAME: Joi.string().optional().allow('', null),
   SUPPORT_EMAIL: Joi.string().email().optional().allow('', null),
 
-  COOKIE_SAME_SITE: Joi.string().valid('lax', 'strict', 'none').default('lax'),
-  COOKIE_PATH: Joi.string().default('/'),
-  COOKIE_REFRESH_PATH: Joi.string().default('/v1/auth'),
+  // When R2_ENDPOINT is provided the remaining four vars are all required,
+  // preventing silent partial misconfiguration that would fail at upload time.
+  R2_ENDPOINT: Joi.string().uri().optional().allow('', null),
+  R2_ACCESS_KEY_ID: Joi.when('R2_ENDPOINT', {
+    is: Joi.string().uri().required(),
+    then: Joi.string().required(),
+    otherwise: Joi.string().optional().allow('', null),
+  }),
+  R2_SECRET_ACCESS_KEY: Joi.when('R2_ENDPOINT', {
+    is: Joi.string().uri().required(),
+    then: Joi.string().required(),
+    otherwise: Joi.string().optional().allow('', null),
+  }),
+  R2_BUCKET_NAME: Joi.when('R2_ENDPOINT', {
+    is: Joi.string().uri().required(),
+    then: Joi.string().required(),
+    otherwise: Joi.string().optional().allow('', null),
+  }),
+  R2_PUBLIC_BASE_URL: Joi.when('R2_ENDPOINT', {
+    is: Joi.string().uri().required(),
+    then: Joi.string().uri().required(),
+    otherwise: Joi.string().optional().allow('', null),
+  }),
+
   COOKIE_DOMAIN: Joi.string().optional().allow('', null),
+
+  HIBP_CHECK_ENABLED: Joi.boolean().default(true),
 });

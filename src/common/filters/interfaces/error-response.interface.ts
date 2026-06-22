@@ -1,7 +1,7 @@
 import { FieldError } from './error-field.interface';
 
 export interface ErrorResponse {
-  success: boolean;
+  success: false;
   method: string;
   status: string;
   statusCode: number;

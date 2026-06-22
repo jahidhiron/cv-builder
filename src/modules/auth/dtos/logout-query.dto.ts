@@ -6,5 +6,5 @@ export class LogoutQueryDto {
   @ApiPropertyOptional({ enum: LogoutType, default: LogoutType.Current })
   @IsEnum(LogoutType)
   @IsOptional()
-  from: LogoutType = LogoutType.Current;
+  type: LogoutType = LogoutType.Current;
 }

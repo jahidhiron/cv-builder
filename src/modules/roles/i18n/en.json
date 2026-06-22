@@ -1,6 +1,17 @@
 {
   "error": {
-    "role-not-found": "Role not found"
+    "role-not-found": "Role not found",
+    "role-key-exists": "A role with this key already exists",
+    "role-protected": "Built-in roles cannot be deleted",
+    "role-not-archived": "Role is not currently archived"
   },
-  "success": {}
+  "success": {
+    "create-role": "Role created successfully",
+    "update-role": "Role updated successfully",
+    "soft-delete-role": "Role archived successfully",
+    "hard-delete-role": "Role permanently deleted",
+    "restore-role": "Role restored successfully",
+    "roles-list": "Roles retrieved successfully",
+    "role-detail": "Role retrieved successfully"
+  }
 }

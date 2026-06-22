@@ -1,84 +1,33 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import qs from 'qs';
+import { Injectable, PipeTransform } from '@nestjs/common';
+import { JSONValue } from './types';
+import { deepConvert } from './deserialize-query.utils';
 
 /**
- * NestJS Pipe: DeserializeQuery
+ * Global pipe that deeply converts all query-parameter values from their raw string
+ * representations to proper TypeScript primitives.
  *
- * Transforms and normalizes incoming query parameters from requests.
- * This pipe handles:
- * 1. Normalizing nested query strings into objects or arrays using `qs.parse`.
- * 2. Converting stringified JSON values (objects/arrays) into actual objects/arrays.
- * 3. Converting boolean-like strings ("true", "false", "1", "0") to booleans.
- * 4. Converting numeric strings into numbers.
- * 5. Recursively processing nested arrays and objects.
- * 6. Returning other string values as-is.
- * 7. Throwing `BadRequestException` if JSON parsing fails.
+ * NestJS pipes receive already-parsed query objects from Express, so this pipe
+ * walks the object tree and calls {@link deepConvert} on every leaf value. Numeric
+ * strings, boolean strings, and JSON strings are all coerced to their correct types
+ * so that downstream DTOs can use typed `@IsNumber()` / `@IsBoolean()` validators
+ * without manual transformation.
  *
- * @implements PipeTransform
+ * Applied globally via `app.useGlobalPipes(new DeserializeQuery())` in `app.ts`.
  */
 @Injectable()
 export class DeserializeQuery implements PipeTransform {
   /**
-   * Transforms and normalizes the incoming query parameters.
-   *
-   * @param value - The raw query parameters from the request.
-   * @returns The normalized object with booleans, numbers, arrays, and objects converted correctly.
-   * @throws {BadRequestException} If JSON parsing fails for stringified objects/arrays.
+   * @param value - The raw query-parameter object produced by Express.
+   * @returns The same object with all leaf values converted to typed primitives.
    */
-  transform(value: any) {
-    if (!value || typeof value !== 'object') return value;
+  transform(value: unknown): unknown {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
 
-    const normalized = qs.parse(value);
-
-    const deepConvert = (val: any): any => {
-      if (Array.isArray(val)) return val.map(deepConvert);
-
-      if (val && typeof val === 'object') {
-        const converted: any = {};
-        for (const key of Object.keys(val)) {
-          converted[key] = deepConvert(val[key]);
-        }
-        return converted;
-      }
-
-      if (typeof val === 'string') {
-        const str = val.trim();
-
-        // Boolean conversion
-        if (str.toLowerCase() === 'true') return true;
-        if (str.toLowerCase() === 'false') return false;
-
-        // Numeric conversion
-        if (!isNaN(Number(str)) && str !== '') return Number(str);
-
-        // JSON conversion
-        if (
-          (str.startsWith('{') && str.endsWith('}')) ||
-          (str.startsWith('[') && str.endsWith(']'))
-        ) {
-          try {
-            return JSON.parse(str);
-          } catch {
-            throw new BadRequestException(`Invalid JSON format: ${val}`);
-          }
-        }
-
-        return str;
-      }
-
-      return val;
-    };
-
-    const result: any = {};
-    for (const key of Object.keys(normalized)) {
-      result[key] = deepConvert(normalized[key]);
+    const result: Record<string, JSONValue> = {};
+    for (const key of Object.keys(value)) {
+      const converted = deepConvert((value as Record<string, unknown>)[key]);
+      if (converted !== undefined) result[key] = converted;
     }
-
     return result;
   }
 }

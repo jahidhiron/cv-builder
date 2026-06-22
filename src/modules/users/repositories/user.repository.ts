@@ -1,4 +1,4 @@
-import { BaseRepository } from '@/common/repositories/base.repository';
+import { BaseRepository } from '@/common/base/repositories/base.repository';
 import { AppLogger } from '@/config/logger';
 import { User } from '@/modules/users/entities/user.entity';
 import { ErrorResponse } from '@/shared/response';
@@ -13,23 +13,5 @@ export class UserRepository extends BaseRepository<User> {
     logger: AppLogger,
   ) {
     super(dataSource, User, 'user', errorResponse, logger);
-  }
-
-  /** Find user with password field included (normally excluded via select: false) */
-  async findWithPassword(id: number): Promise<User | null> {
-    return this.repo
-      .createQueryBuilder('user')
-      .addSelect('user.password')
-      .where('user.id = :id', { id })
-      .getOne();
-  }
-
-  /** Find user by email including password field */
-  async findByEmailWithPassword(email: string): Promise<User | null> {
-    return this.repo
-      .createQueryBuilder('user')
-      .addSelect('user.password')
-      .where('user.email = :email', { email })
-      .getOne();
   }
 }

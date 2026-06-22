@@ -1,9 +1,12 @@
 import { ConfigModule } from '@/config';
 import { CookieModule } from '@/shared/cookie';
+import { GoogleModule } from '@/shared/google';
 import { HttpClientModule } from '@/shared/http-client';
+import { HibpService } from '@/shared/hibp/hibp.service';
 import { Global, Module } from '@nestjs/common';
 import { HashModule } from './hash/hash.module';
 import { MailModule } from './mail/mail.module';
+import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { RedisModule } from './redis/redis.module';
 import { ResponseModule } from './response';
 
@@ -21,10 +24,12 @@ import { ResponseModule } from './response';
  * - {@link SuccessResponse} / {@link ErrorResponse} — typed HTTP response helpers.
  * - {@link ResponseStatusInterceptor} — global interceptor that binds status codes automatically.
  * - {@link CookieService} — centralised writer for authentication cookies.
+ * - {@link RateLimitService} / {@link RateLimitGuard} — Redis fixed-window rate limiting.
  */
 @Global()
 @Module({
-  imports: [ConfigModule, MailModule, ResponseModule, HttpClientModule, HashModule, RedisModule, CookieModule],
-  exports: [ResponseModule, HttpClientModule, HashModule, RedisModule, MailModule, CookieModule],
+  imports: [ConfigModule, MailModule, ResponseModule, HttpClientModule, HashModule, RedisModule, CookieModule, RateLimitModule, GoogleModule],
+  providers: [HibpService],
+  exports: [ResponseModule, HttpClientModule, HashModule, RedisModule, MailModule, CookieModule, RateLimitModule, GoogleModule, HibpService],
 })
 export class SharedModule {}

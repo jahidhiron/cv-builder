@@ -1,17 +1,33 @@
 import { ConfigService } from '@/config';
 import { JwtPayload, UserPayload } from '@/modules/auth/interfaces';
+import { RedisService } from '@/shared/redis/redis.service';
 import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { BaseAuthGuard } from './base-auth.guard';
 
+/**
+ * Guards HTTP routes that require a valid JWT access token.
+ *
+ * Token resolution order (first match wins):
+ * 1. `accessToken` cookie — preferred for browser clients.
+ * 2. `Authorization: Bearer <token>` header — for API/mobile clients.
+ *
+ * Additional checks:
+ * - The token must not appear in the Redis blacklist (set on logout / token rotation).
+ * - The token must pass JWT signature and expiry verification against `accessSecret`.
+ *
+ * On success, attaches `request.user` as a {@link UserPayload} so downstream
+ * handlers and other guards can access the authenticated identity.
+ */
 @Injectable()
 export class JwtAuthGuard extends BaseAuthGuard {
   constructor(
-    protected readonly reflector: Reflector,
+    protected override readonly reflector: Reflector,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly redisService: RedisService,
   ) {
     super(reflector);
   }
@@ -28,17 +44,23 @@ export class JwtAuthGuard extends BaseAuthGuard {
       throw new UnauthorizedException('Authentication token is required');
     }
 
+    const isBlacklisted = await this.redisService.exists(`blacklist:${token}`);
+    if (isBlacklisted) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
     try {
       const payload = this.jwtService.verify<JwtPayload>(token, {
         secret: this.configService.jwt.accessSecret,
       });
       request.user = {
-        id: payload.sub,
+        id: Number(payload.sub),
         name: payload.name,
         email: payload.email,
         roleId: payload.roleId,
         roleKey: payload.roleKey,
         role: payload.role,
+        permissions: payload.permissions ?? [],
         familyId: payload.familyId,
         sessionId: payload.sessionId,
       };

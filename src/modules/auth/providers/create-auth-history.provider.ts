@@ -1,43 +1,56 @@
+import { ModuleName } from '@/common/base/enums';
+import { BaseCreateProvider } from '@/common/base/providers/base-create.provider';
+import { clientAgent, clientIp } from '@/common/utils';
 import { LoginHistory } from '@/modules/auth/entities/login-history.entity';
 import { AuthHistoryPayload } from '@/modules/auth/interfaces';
 import { LoginHistoryRepository } from '@/modules/auth/repositories';
+import { ErrorResponse } from '@/shared/response';
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import type { Request } from 'express';
-import { FindOptionsWhere } from 'typeorm';
+import { FindOptionsWhere, IsNull } from 'typeorm';
+import type { DeepPartial } from 'typeorm';
 
+/**
+ * Records login and logout events in the `login_history` table.
+ *
+ * - `execute(payload)` — inserts a new row for sign-in events. Inherits from
+ *   `BaseCreateProvider`; IP and user-agent are resolved in `buildPayload`.
+ * - `logout(payload, updateAll?)` — bulk-updates open sessions with a
+ *   `loggedOutAt` timestamp. Pass `updateAll = true` to close every open
+ *   session for the user (used by the "logout from all devices" flow).
+ */
 @Injectable({ scope: Scope.REQUEST })
-export class CreateAuthHistoryProvider {
+export class CreateAuthHistoryProvider extends BaseCreateProvider<LoginHistory, AuthHistoryPayload> {
   constructor(
     @Inject(REQUEST) private readonly request: Request,
-    private readonly loginHistoryRepo: LoginHistoryRepository,
-  ) {}
+    repo: LoginHistoryRepository,
+    errorResponse: ErrorResponse,
+  ) {
+    super(ModuleName.Auth, repo, errorResponse);
+  }
 
-  async execute(payload: AuthHistoryPayload, updateAll = false): Promise<void> {
-    const ip = (this.request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
-      ?? this.request.socket?.remoteAddress
-      ?? null;
-    const userAgent = this.request.headers['user-agent'] ?? null;
+  protected override buildPayload(dto: AuthHistoryPayload): DeepPartial<LoginHistory> {
+    return {
+      userId: dto.userId,
+      sessionId: dto.sessionId,
+      familyId: dto.familyId ?? null,
+      loggedInAt: dto.loggedInAt,
+      expiredAt: dto.expiredAt ?? null,
+      ip: clientIp(this.request),
+      userAgent: clientAgent(this.request),
+    } as DeepPartial<LoginHistory>;
+  }
 
-    if (payload.loggedInAt) {
-      await this.loginHistoryRepo.create({
-        userId: payload.userId,
-        sessionId: payload.sessionId,
-        familyId: payload.familyId ?? null,
-        loggedInAt: payload.loggedInAt,
-        expiredAt: payload.expiredAt ?? null,
-        ip,
-        userAgent,
-      } as Partial<LoginHistory>);
-      return;
-    }
+  /**
+   * @param payload   - Logout data: must contain `loggedOutAt`.
+   * @param updateAll - When `true`, closes every open session for the user.
+   */
+  async logout(payload: AuthHistoryPayload, updateAll = false): Promise<void> {
+    const where: FindOptionsWhere<LoginHistory> = updateAll
+      ? { userId: payload.userId, loggedOutAt: IsNull() }
+      : { userId: payload.userId, sessionId: payload.sessionId, loggedOutAt: IsNull() };
 
-    if (payload.loggedOutAt) {
-      const where: FindOptionsWhere<LoginHistory> = updateAll
-        ? { userId: payload.userId, loggedOutAt: undefined }
-        : { userId: payload.userId, sessionId: payload.sessionId, loggedOutAt: undefined };
-
-      await this.loginHistoryRepo.updateMany(where, { loggedOutAt: payload.loggedOutAt });
-    }
+    await this.repo.updateMany(where, { loggedOutAt: payload.loggedOutAt });
   }
 }

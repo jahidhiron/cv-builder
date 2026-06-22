@@ -1,11 +1,43 @@
 import { ConfigModule } from '@/config';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
-import { UserService } from '@/modules/users/services';
+import {
+  CreateUserProvider,
+  DeleteUserProvider,
+  FindOneUserProvider,
+  ListUsersProvider,
+  RestoreUserProvider,
+  ToggleUserStatusProvider,
+  UpdateUserProvider,
+  UploadAvatarProvider,
+  UserExistProvider,
+} from '@/modules/users/providers';
+import { UserRepository } from '@/modules/users/repositories';
+import { UserController } from '@/modules/users/user.controller';
+import { UserService } from '@/modules/users/user.service';
+import { R2StorageModule } from '@/shared/storage';
 import { Module } from '@nestjs/common';
 
 @Module({
-  imports: [ConfigModule],
-  providers: [UserRepository, UserService],
-  exports: [UserService],
+  imports: [ConfigModule, R2StorageModule],
+  controllers: [UserController],
+  providers: [
+    UserRepository,
+    FindOneUserProvider,
+    CreateUserProvider,
+    UpdateUserProvider,
+    ListUsersProvider,
+    DeleteUserProvider,
+    RestoreUserProvider,
+    ToggleUserStatusProvider,
+    UploadAvatarProvider,
+    UserExistProvider,
+    UserService,
+  ],
+  exports: [
+    FindOneUserProvider,
+    CreateUserProvider,
+    UpdateUserProvider,
+    UserExistProvider,
+    UserRepository,
+  ],
 })
 export class UserModule {}

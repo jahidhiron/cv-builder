@@ -1,2 +1,2 @@
-export * from './json-object.interface';
+export * from './file-validation-options.interface';
 export * from './validation-error.interface';

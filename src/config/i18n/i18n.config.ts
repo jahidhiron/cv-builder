@@ -1,4 +1,4 @@
-import { IGNORED_DIRS, SUPPORTED_LANGUAGES } from '@/common/constants';
+﻿import { IGNORED_DIRS, SUPPORTED_LANGUAGES } from './i18n.constant';
 import * as fs from 'fs/promises';
 import type { I18nTranslation } from 'nestjs-i18n';
 import { I18nLoader as Loader } from 'nestjs-i18n';

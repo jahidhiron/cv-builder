@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+/**
+ * Typed accessor for the `db.*` namespace registered by `db.config.ts`.
+ *
+ * Consumed by the TypeORM data-source configuration and by `DbHealthProvider`
+ * to execute management queries. Supports both a full `DATABASE_URL` connection
+ * string and individual host/port/credentials.
+ */
 @Injectable()
 export class DbConfigService {
   constructor(private configService: ConfigService) {}
 
+  /** Database driver — always `"postgres"` for this application. */
   get type(): 'postgres' {
     return this.configService.get<'postgres'>('db.type')!;
   }

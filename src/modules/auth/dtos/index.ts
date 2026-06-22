@@ -1,3 +1,4 @@
+export * from './auth-user.dto';
 export * from './change-password.dto';
 export * from './forgot-password.dto';
 export * from './google-signin.dto';
@@ -6,5 +7,8 @@ export * from './refresh-token.dto';
 export * from './resend-verification.dto';
 export * from './reset-password.dto';
 export * from './signin.dto';
+export * from './signin-response.dto';
 export * from './signup.dto';
+export * from './signup-response.dto';
+export * from './user-payload.dto';
 export * from './verify-email.dto';

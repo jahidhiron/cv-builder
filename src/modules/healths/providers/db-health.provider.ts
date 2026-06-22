@@ -98,15 +98,13 @@ export class DbHealthProvider {
    */
   private async getPostgresConnectionStats(): Promise<PostgresConnectionStatsDto | undefined> {
     try {
-      const [current, maxUsed, maxAllowed] = await Promise.all([
-        this.dataSource.query<{ count: string }[]>(
-          'SELECT count(*)::int AS count FROM pg_stat_activity',
-        ),
-        this.dataSource.query<{ conn: string }[]>(
-          "SELECT numbackends::int AS conn FROM pg_stat_database WHERE datname = current_database()",
-        ),
-        this.dataSource.query<{ setting: string }[]>('SHOW max_connections'),
-      ]);
+      const current = await this.dataSource.query<{ count: string }[]>(
+        'SELECT count(*)::int AS count FROM pg_stat_activity',
+      );
+      const maxUsed = await this.dataSource.query<{ conn: string }[]>(
+        "SELECT numbackends::int AS conn FROM pg_stat_database WHERE datname = current_database()",
+      );
+      const maxAllowed = await this.dataSource.query<{ setting: string }[]>('SHOW max_connections');
 
       return {
         current: current.length ? parseInt(current[0].count, 10) : 0,

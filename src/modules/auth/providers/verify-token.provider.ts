@@ -1,6 +1,6 @@
 import { ModuleName } from '@/common/base/enums';
 import { VerificationTokenPayload } from '@/modules/auth/interfaces';
-import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
+import { UserService } from '@/modules/users/user.service';
 import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
 import { ApplyTokenProvider } from './apply-token.provider';
@@ -20,17 +20,17 @@ export class VerifyTokenProvider {
   constructor(
     private readonly findOneToken: FindOneTokenProvider,
     private readonly applyToken: ApplyTokenProvider,
-    private readonly findOneUser: FindOneUserProvider,
+    private readonly userService: UserService,
     private readonly errorResponse: ErrorResponse,
   ) {}
 
   async execute(payload: VerificationTokenPayload) {
-    const user = await this.findOneUser.execute({ email: payload.email });
+    const { user } = await this.userService.findOne({ email: payload.email }, { throwError: false });
 
     // Use a generic "invalid token" error regardless of whether the user exists
     // to prevent callers from inferring which email addresses are registered.
     if (!user) {
-      await this.errorResponse.badRequest({ module: ModuleName.Auth, key: 'invalid-token' });
+      return this.errorResponse.badRequest({ module: ModuleName.Auth, key: 'invalid-token' });
     }
 
     const tokenRecord = await this.findOneToken.execute({

@@ -36,7 +36,8 @@ export class CreateRefreshTokenProvider extends BaseCreateProvider<
 
   protected override async buildPayload(dto: CreateRefreshTokenDto): Promise<DeepPartial<RefreshToken>> {
     const tokenHash = await this.hashService.createHash(dto.token);
-    const expiresAt = new Date(Date.now() + this.configService.jwt.refreshTokenExpiredIn * 1000);
+    const ttl = dto.expiresIn ?? this.configService.jwt.refreshTokenExpiredIn;
+    const expiresAt = new Date(Date.now() + ttl * 1000);
     const familyId = getDeviceFingerprint(this.request);
 
     return {

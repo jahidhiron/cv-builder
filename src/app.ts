@@ -1,4 +1,3 @@
-import { GlobalExceptionFilter } from '@/common/filters';
 import { setupSecurity, setupSwaggerAuth } from '@/common/middlewares';
 import { DeserializeQuery, validationPipe } from '@/common/pipes';
 import { SWAGGER_PATH } from '@/common/swagger/constants';
@@ -65,7 +64,6 @@ export async function bootstrap(): Promise<{ app: NestExpressApplication; logger
   app.setGlobalPrefix(API_PREFIX);
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: API_VERSION_NUMBER });
 
-  app.useGlobalFilters(new GlobalExceptionFilter(logger, configService));
   app.useGlobalPipes(new DeserializeQuery(), validationPipe());
 
   app.enableShutdownHooks();

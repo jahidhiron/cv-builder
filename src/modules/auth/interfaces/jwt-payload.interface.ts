@@ -20,6 +20,9 @@ export interface JwtPayload {
    *  Carried through every rotation so we can enforce an absolute session
    *  max lifetime even after many token rotations. */
   firstIssuedAt?: number;
+  /** Whether the user opted into an extended session at sign-in time.
+   *  Carried through every rotation so refresh logic can apply the longer TTL. */
+  rememberMe?: boolean;
   iat?: number;
   exp?: number;
 }

@@ -54,7 +54,7 @@ export class UserController {
   @Get(':id')
   @FindOneUserSwaggerDocs()
   async findOne(@Param('id', ParseIdPipe) id: number) {
-    const result = await this.userService.findOne(id);
+    const result = await this.userService.findOne({ id, isDeleted: false });
     return this.successResponse.ok({ module: ModuleName.User, key: 'user-detail', ...result });
   }
 
@@ -62,7 +62,7 @@ export class UserController {
   @Patch(':id')
   @UpdateUserSwaggerDocs()
   async update(@Param('id', ParseIdPipe) id: number, @Body() dto: UpdateUserDto) {
-    const result = await this.userService.update(id, dto);
+    const result = await this.userService.update({ id }, dto);
     return this.successResponse.ok({ module: ModuleName.User, key: 'update-user', ...result });
   }
 

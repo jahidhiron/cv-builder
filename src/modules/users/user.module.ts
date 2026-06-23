@@ -32,12 +32,6 @@ import { Module } from '@nestjs/common';
     UserExistProvider,
     UserService,
   ],
-  exports: [
-    FindOneUserProvider,
-    CreateUserProvider,
-    UpdateUserProvider,
-    UserExistProvider,
-    UserRepository,
-  ],
+  exports: [UserService, UserRepository],
 })
 export class UserModule {}

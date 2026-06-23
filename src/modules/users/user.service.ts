@@ -1,8 +1,9 @@
-import { ModuleName } from '@/common/base/enums';
 import type { UserPayload } from '@/modules/auth/interfaces';
-import { UpdateUserDto, UserListQueryDto } from '@/modules/users/dtos';
+import { FindOneOptions } from '@/common/base';
+import { UserListQueryDto } from '@/modules/users/dtos';
 import { User } from '@/modules/users/entities';
 import {
+  CreateUserProvider,
   DeleteUserProvider,
   FindOneUserProvider,
   ListUsersProvider,
@@ -12,10 +13,9 @@ import {
   UploadAvatarProvider,
   UserExistProvider,
 } from '@/modules/users/providers';
-import { ErrorResponse } from '@/shared/response';
 import { MulterFile } from '@/shared/storage';
 import { Injectable } from '@nestjs/common';
-import type { FindOptionsWhere } from 'typeorm';
+import type { DeepPartial, FindOptionsWhere } from 'typeorm';
 
 /**
  * Facade service for the users domain (controller-facing layer).
@@ -28,22 +28,23 @@ export class UserService {
   constructor(
     private readonly findOneUserProvider: FindOneUserProvider,
     private readonly listUsersProvider: ListUsersProvider,
+    private readonly createUserProvider: CreateUserProvider,
     private readonly updateUserProvider: UpdateUserProvider,
     private readonly deleteUserProvider: DeleteUserProvider,
     private readonly restoreUserProvider: RestoreUserProvider,
     private readonly toggleUserStatusProvider: ToggleUserStatusProvider,
     private readonly uploadAvatarProvider: UploadAvatarProvider,
     private readonly userExistProvider: UserExistProvider,
-    private readonly errorResponse: ErrorResponse,
   ) {}
 
-  /** Retrieve a single user by ID. Throws 404 when not found. */
-  async findOne(id: number) {
-    const user = await this.findOneUserProvider.execute({ id, isDeleted: false });
-    if (!user) {
-      await this.errorResponse.notFound({ module: ModuleName.User, key: 'user-not-found' });
-    }
-    return { user: user };
+  async findOne<TThrow extends boolean = true>(
+    where: FindOptionsWhere<User>,
+    options?: FindOneOptions<User, TThrow>,
+  ): Promise<TThrow extends false ? { user: User | null } : { user: User }> {
+    const user = options?.throwError === false
+      ? await this.findOneUserProvider.execute(where, { throwError: false })
+      : await this.findOneUserProvider.execute(where);
+    return { user } as never;
   }
 
   /** Return a paginated list of users. Excludes the current user via request context. */
@@ -59,9 +60,14 @@ export class UserService {
     return this.userExistProvider.execute(where);
   }
 
-  /** Update user fields by ID. Throws 404 when not found. */
-  async update(id: number, dto: UpdateUserDto) {
-    const user = await this.updateUserProvider.execute({ id }, dto);
+  /** Create a user from raw data. Used by auth flows (signup, Google OAuth). */
+  create(data: DeepPartial<User>): Promise<User> {
+    return this.createUserProvider.execute(data);
+  }
+
+  /** Update user fields by condition. Throws 404 when not found. */
+  async update(where: FindOptionsWhere<User>, dto: DeepPartial<User>) {
+    const user = await this.updateUserProvider.execute(where, dto);
     return { user };
   }
 
@@ -97,7 +103,7 @@ export class UserService {
    */
   async uploadAvatar(id: number, file: MulterFile) {
     const result = await this.uploadAvatarProvider.execute(id, file);
-    const user = await this.findOneUserProvider.execute({ id });
+    const { user } = await this.findOne({ id });
     return { user: { ...user, avatarUrl: result.avatarUrl } };
   }
 }

@@ -101,7 +101,7 @@ export abstract class BaseProvider<T extends ObjectLiteral> {
     const entity = await this.repo.findOne(where, repoOptions);
     if (!entity) {
       if (throwError) {
-        await this.errorResponse.notFound({
+        return this.errorResponse.notFound({
           module: this.module,
           key: `${this.entityName}-not-found`,
         });

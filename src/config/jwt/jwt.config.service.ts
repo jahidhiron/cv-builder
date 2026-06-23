@@ -47,4 +47,14 @@ export class JwtConfigService {
   get maxSessionDays(): number {
     return this.configService.get<number>('jwt.maxSessionDays')!;
   }
+
+  /** Refresh token lifetime in seconds when the user signs in with rememberMe=true. */
+  get rememberMeRefreshTokenExpiredIn(): number {
+    return this.configService.get<number>('jwt.rememberMeRefreshTokenExpiredIn')!;
+  }
+
+  /** Absolute session cap in days for rememberMe sessions. */
+  get rememberMeMaxSessionDays(): number {
+    return this.configService.get<number>('jwt.rememberMeMaxSessionDays')!;
+  }
 }

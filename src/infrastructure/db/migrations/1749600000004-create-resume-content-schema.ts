@@ -1,23 +1,23 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+﻿import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Creates the resume content schema — all tables required to build and store resumes.
+ * Creates the resume content schema â€” all tables required to build and store resumes.
  *
  * Tables created:
- *  - `categories`               — job/industry categories for profiles and templates
- *  - `resume_styles`            — visual style definitions (colours, fonts, layout variants)
- *  - `section_types`            — system-defined section types (Summary, Experience, …) with seed rows
- *  - `profile_field_definitions`— per-category custom profile fields
- *  - `user_profiles`            — one-to-one user profile with JSONB data bag
- *  - `templates`                — resume templates linking a style and a category
- *  - `resumes`                  — user resume documents
- *  - `resume_sections`          — ordered sections within a resume, typed by `section_types`
+ *  - `categories`               â€” job/industry categories for profiles and templates
+ *  - `resume_styles`            â€” visual style definitions (colours, fonts, layout variants)
+ *  - `section_types`            â€” system-defined section types (Summary, Experience, â€¦) with seed rows
+ *  - `profile_field_definitions`â€” per-category custom profile fields
+ *  - `user_profiles`            â€” one-to-one user profile with JSONB data bag
+ *  - `templates`                â€” resume templates linking a style and a category
+ *  - `resumes`                  â€” user resume documents
+ *  - `resume_sections`          â€” ordered sections within a resume, typed by `section_types`
  *
  * Seed data:
  *  - Section types: Summary, Experience, Education, Skills, Projects, Certifications, Custom
  */
-export class CreateResumeContentSchema1749600000003 implements MigrationInterface {
-  name = 'CreateResumeContentSchema1749600000003';
+export class CreateResumeContentSchema1749600000004 implements MigrationInterface {
+  name = 'CreateResumeContentSchema1749600000004';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Categories

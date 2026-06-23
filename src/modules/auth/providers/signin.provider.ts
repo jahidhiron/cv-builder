@@ -15,8 +15,7 @@ import { CreateRefreshTokenProvider } from '@/modules/auth/providers/create-refr
 import { NewDeviceNotificationProvider } from '@/modules/auth/providers/new-device-notification.provider';
 import { RevokeRefreshTokenProvider } from '@/modules/auth/providers/revoke-refresh-token.provider';
 import { FindPermissionKeysByRoleProvider } from '@/modules/permissions/providers';
-import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
-import { UpdateUserProvider } from '@/modules/users/providers/update-user.provider';
+import { UserService } from '@/modules/users/user.service';
 import { HashService } from '@/shared/hash/hash.service';
 import { RedisService } from '@/shared/redis/redis.service';
 import { ErrorResponse } from '@/shared/response';
@@ -41,8 +40,7 @@ import { SigninDto } from '../dtos';
 export class SigninProvider {
   constructor(
     @Inject(REQUEST) private readonly request: Request,
-    private readonly findOneUser: FindOneUserProvider,
-    private readonly updateUser: UpdateUserProvider,
+    private readonly userService: UserService,
     private readonly hashService: HashService,
     private readonly jwtService: JwtService,
     private readonly errorResponse: ErrorResponse,
@@ -67,7 +65,7 @@ export class SigninProvider {
     const ip = clientIp(this.request);
     const userAgent = clientAgent(this.request);
 
-    const user = await this.findOneUser.execute({ email: dto.email }, { throwError: false });
+    const { user } = await this.userService.findOne({ email: dto.email }, { throwError: false });
 
     // Run scrypt unconditionally before any early-return guard so the response
     // time is indistinguishable from a wrong-password attempt (timing-safe).
@@ -97,9 +95,12 @@ export class SigninProvider {
       if (user.failedAttempts >= MAX_LOGIN_FAILED_ATTEMPTS) {
         user.lockedUntil = new Date(Date.now() + ACCOUNT_LOCKED_IN_MINUTES * 60_000);
       }
-      await this.updateUser.execute(
+      await this.userService.update(
         { id: user.id },
-        { failedAttempts: user.failedAttempts, lockedUntil: user.lockedUntil },
+        {
+          failedAttempts: user.failedAttempts,
+          lockedUntil: user.lockedUntil,
+        },
       );
       this.auditLog.log({
         event: SecurityAuditEvent.SigninFailure,
@@ -118,7 +119,7 @@ export class SigninProvider {
       return this.errorResponse.forbidden({ module: ModuleName.Auth, key: 'user-not-verified' });
     }
 
-    await this.updateUser.execute({ id: user.id }, { failedAttempts: 0, lockedUntil: null });
+    await this.userService.update({ id: user.id }, { failedAttempts: 0, lockedUntil: null });
 
     const familyId = getDeviceFingerprint(this.request);
     const sessionId = this.hashService.generateToken(8);
@@ -136,6 +137,10 @@ export class SigninProvider {
       : [];
 
     const firstIssuedAt = Date.now();
+    const rememberMe = dto.rememberMe === true;
+    const refreshTtl: number = rememberMe
+      ? this.configService.jwt.rememberMeRefreshTokenExpiredIn
+      : this.configService.jwt.refreshTokenExpiredIn;
 
     const jwtPayload: JwtPayload = {
       sub: user.id,
@@ -146,6 +151,7 @@ export class SigninProvider {
       familyId,
       sessionId,
       firstIssuedAt,
+      rememberMe,
     };
 
     const accessToken = this.jwtService.sign(jwtPayload, {
@@ -154,13 +160,14 @@ export class SigninProvider {
     });
     const refreshToken = this.jwtService.sign(jwtPayload, {
       secret: this.configService.jwt.refreshSecret,
-      expiresIn: this.configService.jwt.refreshTokenExpiredIn,
+      expiresIn: refreshTtl,
     });
 
     await this.createRefreshToken.execute({
       token: refreshToken,
       userId: user.id,
       sessionStartedAt: new Date(firstIssuedAt),
+      expiresIn: refreshTtl,
     });
     await this.cleanupRefreshToken.execute({ userId: user.id });
 
@@ -182,14 +189,14 @@ export class SigninProvider {
       createdAt: new Date().toISOString(),
     });
 
-    await this.redisService.expire(redisKey, this.configService.jwt.refreshTokenExpiredIn);
+    await this.redisService.expire(redisKey, refreshTtl);
 
     await this.createAuthHistory.execute({
       userId: user.id,
       sessionId,
       familyId,
       loggedInAt: new Date(),
-      expiredAt: new Date(Date.now() + this.configService.jwt.refreshTokenExpiredIn * 1000),
+      expiredAt: new Date(Date.now() + refreshTtl * 1000),
     });
 
     this.auditLog.log({ event: SecurityAuditEvent.SigninSuccess, userId: user.id, ip, userAgent });

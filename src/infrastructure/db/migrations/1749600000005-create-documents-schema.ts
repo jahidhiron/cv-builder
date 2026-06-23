@@ -1,17 +1,17 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+﻿import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
  * Creates document-generation and tracking tables.
  *
  * Tables created:
- *  - `cover_letters`   — cover letter documents optionally linked to a resume
- *  - `ats_scores`      — ATS (Applicant Tracking System) score snapshots for a resume
- *  - `ai_generations`  — log of AI-assisted content generation requests and responses
- *  - `resume_imports`  — records of resume files imported from external sources
- *  - `resume_exports`  — records of resume files exported (PDF, DOCX, etc.)
+ *  - `cover_letters`   â€” cover letter documents optionally linked to a resume
+ *  - `ats_scores`      â€” ATS (Applicant Tracking System) score snapshots for a resume
+ *  - `ai_generations`  â€” log of AI-assisted content generation requests and responses
+ *  - `resume_imports`  â€” records of resume files imported from external sources
+ *  - `resume_exports`  â€” records of resume files exported (PDF, DOCX, etc.)
  */
-export class CreateDocumentsSchema1749600000004 implements MigrationInterface {
-  name = 'CreateDocumentsSchema1749600000004';
+export class CreateDocumentsSchema1749600000005 implements MigrationInterface {
+  name = 'CreateDocumentsSchema1749600000005';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Cover letters

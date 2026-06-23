@@ -2,7 +2,7 @@ import { ModuleName } from '@/common/base/enums';
 import { TokenType } from '@/modules/auth/enums';
 import { VerificationTokenPayload } from '@/modules/auth/interfaces';
 import { VerifyTokenProvider } from '@/modules/auth/providers/verify-token.provider';
-import { UpdateUserProvider } from '@/modules/users/providers/update-user.provider';
+import { UserService } from '@/modules/users/user.service';
 import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
 import { VerifyEmailDto } from '../dtos';
@@ -17,7 +17,7 @@ import { VerifyEmailDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class VerifyEmailProvider {
   constructor(
-    private readonly updateUser: UpdateUserProvider,
+    private readonly userService: UserService,
     private readonly verifyToken: VerifyTokenProvider,
     private readonly errorResponse: ErrorResponse,
   ) {}
@@ -31,13 +31,16 @@ export class VerifyEmailProvider {
 
     const user = await this.verifyToken.execute(payload);
     if (!user) {
-      await this.errorResponse.notFound({ module: ModuleName.User, key: 'user-not-found' });
+      return this.errorResponse.notFound({ module: ModuleName.User, key: 'user-not-found' });
     }
 
     if (user.emailVerified) {
-      await this.errorResponse.conflict({ module: ModuleName.Auth, key: 'user-already-verified' });
+      return this.errorResponse.conflict({ module: ModuleName.Auth, key: 'user-already-verified' });
     }
 
-    await this.updateUser.execute({ id: user.id }, { emailVerified: true, emailVerifiedAt: new Date() });
+    await this.userService.update(
+      { id: user.id },
+      { emailVerified: true, emailVerifiedAt: new Date() },
+    );
   }
 }

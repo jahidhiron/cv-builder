@@ -1,0 +1,11 @@
+{
+  "error": {
+    "error-tracking-not-found": "Server error record not found"
+  },
+  "success": {
+    "server-errors-list": "Server errors retrieved successfully",
+    "server-error-detail": "Server error retrieved successfully",
+    "update-server-error-status": "Server error status updated successfully",
+    "delete-server-error": "Server error deleted successfully"
+  }
+}

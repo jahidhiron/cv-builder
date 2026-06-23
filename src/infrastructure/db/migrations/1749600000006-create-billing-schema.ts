@@ -1,23 +1,23 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+﻿import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
  * Creates the billing and subscription schema.
  *
  * Tables created:
- *  - `billing_intervals`    — recurring billing cycles (Monthly, Annual)
- *  - `plans`                — subscription plan tiers (Free, Pro, Enterprise)
- *  - `plan_features`        — feature flags and limits per plan
- *  - `plan_prices`          — price per plan per billing interval (in BDT)
- *  - `subscriptions`        — active/historical user subscriptions
- *  - `subscription_events`  — append-only audit log of subscription lifecycle events
- *  - `entitlements`         — resolved feature access snapshot per user (cache of current plan)
+ *  - `billing_intervals`    â€” recurring billing cycles (Monthly, Annual)
+ *  - `plans`                â€” subscription plan tiers (Free, Pro, Enterprise)
+ *  - `plan_features`        â€” feature flags and limits per plan
+ *  - `plan_prices`          â€” price per plan per billing interval (in BDT)
+ *  - `subscriptions`        â€” active/historical user subscriptions
+ *  - `subscription_events`  â€” append-only audit log of subscription lifecycle events
+ *  - `entitlements`         â€” resolved feature access snapshot per user (cache of current plan)
  *
  * Seed data:
  *  - Billing intervals: Monthly (1 month), Annual (12 months)
  *  - Plans:             Free, Pro, Enterprise
  */
-export class CreateBillingSchema1749600000005 implements MigrationInterface {
-  name = 'CreateBillingSchema1749600000005';
+export class CreateBillingSchema1749600000006 implements MigrationInterface {
+  name = 'CreateBillingSchema1749600000006';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Billing intervals

@@ -2,7 +2,7 @@ import { ConfigService } from '@/config';
 import { TokenType } from '@/modules/auth/enums';
 import { TokenPayload } from '@/modules/auth/interfaces';
 import { CreateTokenProvider } from '@/modules/auth/providers/create-token.provider';
-import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
+import { UserService } from '@/modules/users/user.service';
 import { SendEmailParams } from '@/shared/mail/interfaces';
 import { MailService } from '@/shared/mail/mail.service';
 import { Injectable, Scope } from '@nestjs/common';
@@ -20,14 +20,14 @@ import { ForgotPasswordDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class ForgotPasswordProvider {
   constructor(
-    private readonly findOneUser: FindOneUserProvider,
+    private readonly userService: UserService,
     private readonly createToken: CreateTokenProvider,
     private readonly configService: ConfigService,
     private readonly emailService: MailService,
   ) {}
 
   async execute(dto: ForgotPasswordDto): Promise<void> {
-    const user = await this.findOneUser.execute({ email: dto.email }, { throwError: false });
+    const { user } = await this.userService.findOne({ email: dto.email }, { throwError: false });
 
     // Silently succeed for any ineligible state to prevent email enumeration.
     // The client always receives a 200 regardless of whether an email was sent.

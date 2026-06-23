@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class SigninDto {
   @ApiProperty({ example: 'john@example.com' })
@@ -14,4 +14,9 @@ export class SigninDto {
   @IsNotEmpty()
   @MaxLength(128)
   password!: string;
+
+  @ApiPropertyOptional({ example: false, description: 'Extend session lifetime for trusted devices' })
+  @IsOptional()
+  @IsBoolean()
+  rememberMe?: boolean;
 }

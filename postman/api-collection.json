@@ -751,6 +751,104 @@
       ]
     },
     {
+      "name": "error-tracking",
+      "item": [
+        {
+          "name": "list",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/error-tracking",
+              "host": ["{{baseUrl}}"],
+              "path": ["error-tracking"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "TypeError",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "pending | in_progress | resolved | wont_fix | ignored | duplicate",
+                  "disabled": true
+                },
+                {
+                  "key": "sortBy",
+                  "value": "[{\"whom\":\"lastSeenAt\",\"order\":\"desc\"}]",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "detail",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/error-tracking/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["error-tracking", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update-status",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"in_progress\"\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/error-tracking/1/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["error-tracking", "1", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/error-tracking/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["error-tracking", "1"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "permission",
       "item": [
         {

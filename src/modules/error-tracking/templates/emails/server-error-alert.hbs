@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Server Error Alert</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f4f4f7; font-family: Arial, sans-serif; }
+    .wrapper { max-width: 640px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; }
+    .header { background-color: #dc2626; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #ffffff; margin: 0; font-size: 22px; }
+    .body { padding: 40px; color: #374151; }
+    .body p { line-height: 1.6; margin: 0 0 16px; }
+    .info-box { background-color: #f9fafb; border-left: 4px solid #dc2626; padding: 16px 20px; border-radius: 4px; margin: 24px 0; }
+    .info-box table { width: 100%; border-collapse: collapse; }
+    .info-box td { padding: 5px 0; font-size: 14px; color: #374151; vertical-align: top; word-break: break-all; }
+    .info-box td:first-child { font-weight: bold; width: 120px; color: #6b7280; white-space: nowrap; }
+    .stack-box { background-color: #1f2937; border-radius: 4px; padding: 16px; margin-top: 24px; overflow-x: auto; }
+    .stack-box pre { margin: 0; color: #f9fafb; font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-all; }
+    .note { color: #9ca3af; font-size: 12px; margin-top: 24px; }
+    .footer { padding: 24px 40px; background-color: #f9fafb; text-align: center; color: #6b7280; font-size: 12px; }
+    .footer a { color: #4f46e5; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      {{#if logoUrl}}<img src="{{logoUrl}}" alt="{{companyName}}" height="40" style="margin-bottom:12px;" /><br />{{/if}}
+      <h1>&#x1F6A8; New 500 Internal Server Error</h1>
+    </div>
+    <div class="body">
+      <p>A new server error fingerprint was detected on <strong>{{companyName}}</strong>.</p>
+      <div class="info-box">
+        <table>
+          <tr><td>Error</td><td><strong>{{errorName}}</strong>: {{message}}</td></tr>
+          <tr><td>Method</td><td>{{method}}</td></tr>
+          <tr><td>Path</td><td>{{path}}</td></tr>
+          <tr><td>Occurred at</td><td>{{occurredAt}}</td></tr>
+        </table>
+      </div>
+      {{#if stack}}
+      <p><strong>Stack Trace</strong></p>
+      <div class="stack-box">
+        <pre>{{stack}}</pre>
+      </div>
+      {{/if}}
+      <p class="note">
+        This alert fires once per unique error fingerprint.
+        Subsequent occurrences are counted in the database only.
+        Log in to the admin panel to update the error status.
+      </p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} {{companyName}}. All rights reserved. |
+      <a href="mailto:{{supportEmail}}">{{supportEmail}}</a>
+    </div>
+  </div>
+</body>
+</html>

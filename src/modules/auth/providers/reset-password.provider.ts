@@ -8,8 +8,7 @@ import { CheckPasswordHistoryProvider } from '@/modules/auth/providers/check-pas
 import { RevokeRefreshTokenProvider } from '@/modules/auth/providers/revoke-refresh-token.provider';
 import { SavePasswordHistoryProvider } from '@/modules/auth/providers/save-password-history.provider';
 import { VerifyTokenProvider } from '@/modules/auth/providers/verify-token.provider';
-import { FindOneUserProvider } from '@/modules/users/providers';
-import { UpdateUserProvider } from '@/modules/users/providers/update-user.provider';
+import { UserService } from '@/modules/users/user.service';
 import { HashService } from '@/shared/hash/hash.service';
 import { HibpService } from '@/shared/hibp/hibp.service';
 import { SendEmailParams } from '@/shared/mail/interfaces';
@@ -34,8 +33,7 @@ import { ResetPasswordDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class ResetPasswordProvider {
   constructor(
-    private readonly findOneUser: FindOneUserProvider,
-    private readonly updateUser: UpdateUserProvider,
+    private readonly userService: UserService,
     private readonly verifyToken: VerifyTokenProvider,
     private readonly hashService: HashService,
     private readonly errorResponse: ErrorResponse,
@@ -51,7 +49,10 @@ export class ResetPasswordProvider {
 
   async execute(dto: ResetPasswordDto): Promise<void> {
     // Validate before consuming — token consumption is irreversible, so a failed check here preserves the reset link.
-    const userForCheck = await this.findOneUser.execute({ email: dto.email });
+    const { user: userForCheck } = await this.userService.findOne(
+      { email: dto.email },
+      { throwError: false },
+    );
     if (userForCheck?.password) {
       const isSame = await this.hashService.verify(userForCheck.password, dto.password);
       if (isSame) {
@@ -59,7 +60,10 @@ export class ResetPasswordProvider {
       }
     }
     if (userForCheck) {
-      await this.checkPasswordHistory.execute({ userId: userForCheck.id, newPassword: dto.password });
+      await this.checkPasswordHistory.execute({
+        userId: userForCheck.id,
+        newPassword: dto.password,
+      });
     }
     await this.hibpService.checkPassword(dto.password);
 
@@ -71,11 +75,11 @@ export class ResetPasswordProvider {
 
     const user = await this.verifyToken.execute(payload);
     if (!user) {
-      await this.errorResponse.notFound({ module: ModuleName.User, key: 'user-not-found' });
+      return this.errorResponse.notFound({ module: ModuleName.User, key: 'user-not-found' });
     }
 
     const newHash = await this.hashService.createHash(dto.password);
-    await this.updateUser.execute({ id: user.id }, { password: newHash });
+    await this.userService.update({ id: user.id }, { password: newHash });
     await this.savePasswordHistory.execute({ userId: user.id, passwordHash: newHash });
 
     // Revoke all DB refresh tokens, blacklist live access tokens, and wipe Redis sessions

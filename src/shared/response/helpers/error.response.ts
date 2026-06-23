@@ -38,9 +38,14 @@ export class ErrorResponse {
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
    */
-  async paymentRequired<T extends object = any>(params: ResponseParams<T> = {} as ResponseParams<T>): Promise<never> {
+  async paymentRequired<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
     params.message ||= 'Payment Required';
-    const response = await this.responseService.error<T>(HTTP_STATUS.PAYMENT_REQUIRED.context, params);
+    const response = await this.responseService.error<T>(
+      HTTP_STATUS.PAYMENT_REQUIRED.context,
+      params,
+    );
     throw new HttpException(response, HTTP_STATUS.PAYMENT_REQUIRED.status);
   }
 
@@ -49,7 +54,9 @@ export class ErrorResponse {
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
    */
-  async unauthorized<T extends object = any>(params: ResponseParams<T> = {} as ResponseParams<T>): Promise<never> {
+  async unauthorized<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
     params.message ||= 'Unauthorized';
     const response = await this.responseService.error<T>(HTTP_STATUS.UNAUTHORIZED.context, params);
     throw new HttpException(response, HTTP_STATUS.UNAUTHORIZED.status);
@@ -82,7 +89,9 @@ export class ErrorResponse {
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
    */
-  async gone<T extends object = any>(params: ResponseParams<T> = {} as ResponseParams<T>): Promise<never> {
+  async gone<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
     params.message ||= 'Gone';
     const response = await this.responseService.error<T>(HTTP_STATUS.GONE.context, params);
     throw new HttpException(response, HTTP_STATUS.GONE.status);
@@ -108,7 +117,10 @@ export class ErrorResponse {
    */
   async unprocessableEntity<T extends object = any>(params: ResponseParams<T>): Promise<never> {
     params.message ||= 'Unprocessable Entity';
-    const response = await this.responseService.error<T>(HTTP_STATUS.UNPROCESSABLE_ENTITY.context, params);
+    const response = await this.responseService.error<T>(
+      HTTP_STATUS.UNPROCESSABLE_ENTITY.context,
+      params,
+    );
     throw new HttpException(response, HTTP_STATUS.UNPROCESSABLE_ENTITY.status);
   }
 
@@ -117,9 +129,14 @@ export class ErrorResponse {
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
    */
-  async tooManyRequests<T extends object = any>(params: ResponseParams<T> = {} as ResponseParams<T>): Promise<never> {
+  async tooManyRequests<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
     params.message ||= 'Too Many Requests';
-    const response = await this.responseService.error<T>(HTTP_STATUS.TOO_MANY_REQUESTS.context, params);
+    const response = await this.responseService.error<T>(
+      HTTP_STATUS.TOO_MANY_REQUESTS.context,
+      params,
+    );
     throw new HttpException(response, HTTP_STATUS.TOO_MANY_REQUESTS.status);
   }
 
@@ -128,9 +145,14 @@ export class ErrorResponse {
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
    */
-  async requestTimeout<T extends object = any>(params: ResponseParams<T> = {} as ResponseParams<T>): Promise<never> {
+  async requestTimeout<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
     params.message ||= 'Unable to process your request at the moment, please try later';
-    const response = await this.responseService.error<T>(HTTP_STATUS.REQUEST_TIMEOUT.context, params);
+    const response = await this.responseService.error<T>(
+      HTTP_STATUS.REQUEST_TIMEOUT.context,
+      params,
+    );
     throw new HttpException(response, HTTP_STATUS.REQUEST_TIMEOUT.status);
   }
 
@@ -139,9 +161,14 @@ export class ErrorResponse {
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
    */
-  async internalServerError<T extends object = any>(params: ResponseParams<T> = {} as ResponseParams<T>): Promise<never> {
+  async internalServerError<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
     params.message ||= 'Internal Server Error';
-    const response = await this.responseService.error<T>(HTTP_STATUS.INTERNAL_SERVER_ERROR.context, params);
+    const response = await this.responseService.error<T>(
+      HTTP_STATUS.INTERNAL_SERVER_ERROR.context,
+      params,
+    );
     throw new HttpException(response, HTTP_STATUS.INTERNAL_SERVER_ERROR.status);
   }
 
@@ -150,9 +177,14 @@ export class ErrorResponse {
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
    */
-  async notImplemented<T extends object = any>(params: ResponseParams<T> = {} as ResponseParams<T>): Promise<never> {
+  async notImplemented<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
     params.message ||= 'Not Implemented';
-    const response = await this.responseService.error<T>(HTTP_STATUS.NOT_IMPLEMENTED.context, params);
+    const response = await this.responseService.error<T>(
+      HTTP_STATUS.NOT_IMPLEMENTED.context,
+      params,
+    );
     throw new HttpException(response, HTTP_STATUS.NOT_IMPLEMENTED.status);
   }
 
@@ -161,7 +193,9 @@ export class ErrorResponse {
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
    */
-  async badGateway<T extends object = any>(params: ResponseParams<T> = {} as ResponseParams<T>): Promise<never> {
+  async badGateway<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
     params.message ||= 'Bad Gateway';
     const response = await this.responseService.error<T>(HTTP_STATUS.BAD_GATEWAY.context, params);
     throw new HttpException(response, HTTP_STATUS.BAD_GATEWAY.status);
@@ -172,9 +206,14 @@ export class ErrorResponse {
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
    */
-  async serviceUnavailable<T extends object = any>(params: ResponseParams<T> = {} as ResponseParams<T>): Promise<never> {
+  async serviceUnavailable<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
     params.message ||= 'Service Unavailable. Please try again later.';
-    const response = await this.responseService.error<T>(HTTP_STATUS.SERVICE_UNAVAILABLE.context, params);
+    const response = await this.responseService.error<T>(
+      HTTP_STATUS.SERVICE_UNAVAILABLE.context,
+      params,
+    );
     throw new HttpException(response, HTTP_STATUS.SERVICE_UNAVAILABLE.status);
   }
 
@@ -183,9 +222,14 @@ export class ErrorResponse {
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
    */
-  async gatewayTimeout<T extends object = any>(params: ResponseParams<T> = {} as ResponseParams<T>): Promise<never> {
+  async gatewayTimeout<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
     params.message ||= 'Gateway Timeout';
-    const response = await this.responseService.error<T>(HTTP_STATUS.GATEWAY_TIMEOUT.context, params);
+    const response = await this.responseService.error<T>(
+      HTTP_STATUS.GATEWAY_TIMEOUT.context,
+      params,
+    );
     throw new HttpException(response, HTTP_STATUS.GATEWAY_TIMEOUT.status);
   }
 }

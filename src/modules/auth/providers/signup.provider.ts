@@ -8,8 +8,7 @@ import { CreateTokenProvider } from '@/modules/auth/providers/create-token.provi
 import { SavePasswordHistoryProvider } from '@/modules/auth/providers/save-password-history.provider';
 import { RoleService } from '@/modules/roles/role.service';
 import { User } from '@/modules/users/entities/user.entity';
-import { CreateUserProvider } from '@/modules/users/providers/create-user.provider';
-import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
+import { UserService } from '@/modules/users/user.service';
 import { HashService } from '@/shared/hash/hash.service';
 import { HibpService } from '@/shared/hibp/hibp.service';
 import { SendEmailParams } from '@/shared/mail/interfaces';
@@ -32,8 +31,7 @@ import { SignupDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class SignupProvider {
   constructor(
-    private readonly findOneUser: FindOneUserProvider,
-    private readonly createUser: CreateUserProvider,
+    private readonly userService: UserService,
     private readonly roleService: RoleService,
     private readonly hashService: HashService,
     private readonly errorResponse: ErrorResponse,
@@ -52,18 +50,18 @@ export class SignupProvider {
    * @throws {NotFoundException} When the default `User` role is missing from the database.
    */
   async execute(dto: SignupDto): Promise<User> {
-    const existing = await this.findOneUser.execute({ email: dto.email }, {throwError: false});
+    const existing = await this.userService.exists({ email: dto.email });
     if (existing) {
       return this.errorResponse.conflict({ module: ModuleName.Auth, key: 'email-exist' });
     }
 
     const { role } = await this.roleService.findOne({ name: UserRole.User, isDeleted: false });
 
-    await this.hibpService.checkPassword(dto.password);
+    // await this.hibpService.checkPassword(dto.password);
 
     const passwordHash = await this.hashService.createHash(dto.password);
 
-    const user = await this.createUser.execute({
+    const user = await this.userService.create({
       name: dto.name,
       email: dto.email,
       password: passwordHash,

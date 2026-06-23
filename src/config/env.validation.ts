@@ -112,6 +112,8 @@ export const envValidationSchema = Joi.object({
   JWT_ACCESS_EXPIRES_IN_SECONDS: Joi.number().default(900),
   JWT_REFRESH_EXPIRES_IN_SECONDS: Joi.number().default(604800),
   JWT_MAX_SESSION_DAYS: Joi.number().integer().min(1).default(30),
+  JWT_REMEMBER_ME_EXPIRES_IN_SECONDS: Joi.number().integer().min(1).default(2592000),
+  JWT_REMEMBER_ME_MAX_SESSION_DAYS: Joi.number().integer().min(1).default(90),
 
   GOOGLE_CLIENT_ID: Joi.string().optional().allow('', null),
   GOOGLE_CLIENT_SECRET: Joi.string().optional().allow('', null),

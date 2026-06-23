@@ -13,9 +13,7 @@ import { RevokeRefreshTokenProvider } from '@/modules/auth/providers/revoke-refr
 import { FindPermissionKeysByRoleProvider } from '@/modules/permissions/providers';
 import { RoleService } from '@/modules/roles/role.service';
 import { User } from '@/modules/users/entities/user.entity';
-import { CreateUserProvider } from '@/modules/users/providers/create-user.provider';
-import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
-import { UpdateUserProvider } from '@/modules/users/providers/update-user.provider';
+import { UserService } from '@/modules/users/user.service';
 import { GoogleService } from '@/shared/google';
 import { HashService } from '@/shared/hash/hash.service';
 import { RedisService } from '@/shared/redis/redis.service';
@@ -43,9 +41,7 @@ import { GoogleSigninDto } from '../dtos';
 export class GoogleSigninProvider {
   constructor(
     @Inject(REQUEST) private readonly request: Request,
-    private readonly findOneUser: FindOneUserProvider,
-    private readonly createUser: CreateUserProvider,
-    private readonly updateUser: UpdateUserProvider,
+    private readonly userService: UserService,
     private readonly roleService: RoleService,
     private readonly jwtService: JwtService,
     private readonly hashService: HashService,
@@ -89,11 +85,11 @@ export class GoogleSigninProvider {
       return undefined as never;
     }
 
-    let user = await this.findOneUser.execute({ email: googlePayload.email });
+    let { user } = await this.userService.findOne({ email: googlePayload.email }, { throwError: false });
 
     if (!user) {
       const { role } = await this.roleService.findOne({ name: UserRole.User, isDeleted: false });
-      user = await this.createUser.execute({
+      user = await this.userService.create({
         name: googlePayload.name,
         email: googlePayload.email,
         googleId: googlePayload.sub,
@@ -110,7 +106,7 @@ export class GoogleSigninProvider {
         await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'user-inactive' });
       }
       if (!user.googleId) {
-        await this.updateUser.execute({ id: user.id }, { googleId: googlePayload.sub });
+        await this.userService.update({ id: user.id }, { googleId: googlePayload.sub });
       }
     }
 

@@ -6,8 +6,7 @@ import { AuditLogProvider } from '@/modules/auth/providers/audit-log.provider';
 import { CheckPasswordHistoryProvider } from '@/modules/auth/providers/check-password-history.provider';
 import { RevokeRefreshTokenProvider } from '@/modules/auth/providers/revoke-refresh-token.provider';
 import { SavePasswordHistoryProvider } from '@/modules/auth/providers/save-password-history.provider';
-import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
-import { UpdateUserProvider } from '@/modules/users/providers/update-user.provider';
+import { UserService } from '@/modules/users/user.service';
 import { HashService } from '@/shared/hash/hash.service';
 import { HibpService } from '@/shared/hibp/hibp.service';
 import { SendEmailParams } from '@/shared/mail/interfaces';
@@ -27,8 +26,7 @@ import { ChangePasswordDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class ChangePasswordProvider {
   constructor(
-    private readonly findOneUser: FindOneUserProvider,
-    private readonly updateUser: UpdateUserProvider,
+    private readonly userService: UserService,
     private readonly hashService: HashService,
     private readonly errorResponse: ErrorResponse,
     private readonly revokeRefreshToken: RevokeRefreshTokenProvider,
@@ -42,7 +40,7 @@ export class ChangePasswordProvider {
   ) {}
 
   async execute(dto: ChangePasswordDto, currentUser: UserPayload): Promise<void> {
-    const user = await this.findOneUser.execute({ id: currentUser.id });
+    const { user } = await this.userService.findOne({ id: currentUser.id });
 
     if (!user.password) {
       return this.errorResponse.forbidden({ module: ModuleName.Auth, key: 'no-password-set' });
@@ -60,7 +58,7 @@ export class ChangePasswordProvider {
     await this.hibpService.checkPassword(dto.newPassword);
 
     const newHash = await this.hashService.createHash(dto.newPassword);
-    await this.updateUser.execute({ id: user.id }, { password: newHash });
+    await this.userService.update({ id: user.id }, { password: newHash });
     await this.savePasswordHistory.execute({ userId: user.id, passwordHash: newHash });
 
     await this.revokeRefreshToken.execute({ userId: user.id }, { reason: 'password-changed' });

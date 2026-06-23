@@ -3,7 +3,7 @@ import { ConfigService } from '@/config';
 import { TokenType } from '@/modules/auth/enums';
 import { TokenPayload } from '@/modules/auth/interfaces';
 import { CreateTokenProvider } from '@/modules/auth/providers/create-token.provider';
-import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
+import { UserService } from '@/modules/users/user.service';
 import { SendEmailParams } from '@/shared/mail/interfaces';
 import { MailService } from '@/shared/mail/mail.service';
 import { Injectable, Scope } from '@nestjs/common';
@@ -19,14 +19,14 @@ import { ResendVerificationDto } from '../dtos';
 @Injectable({ scope: Scope.REQUEST })
 export class ResendVerificationProvider {
   constructor(
-    private readonly findOneUser: FindOneUserProvider,
+    private readonly userService: UserService,
     private readonly createToken: CreateTokenProvider,
     private readonly configService: ConfigService,
     private readonly emailService: MailService,
   ) {}
 
   async execute(dto: ResendVerificationDto): Promise<void> {
-    const user = await this.findOneUser.execute({ email: dto.email }, { throwError: false });
+    const { user } = await this.userService.findOne({ email: dto.email }, { throwError: false });
 
     // Silently succeed for any ineligible state to prevent account enumeration.
     if (!user || user.isDeleted || user.emailVerified) return;

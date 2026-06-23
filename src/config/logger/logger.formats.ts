@@ -2,7 +2,31 @@ import * as winston from 'winston';
 import 'winston-daily-rotate-file';
 import { LOG_DIR_NAME } from './logger.constant';
 
-const { combine, timestamp, colorize, printf, json, errors } = winston.format;
+const { combine, timestamp, colorize, printf, errors } = winston.format;
+
+/**
+ * Production console/file format: newline-delimited JSON (NDJSON).
+ *
+ * Fields are emitted in a consistent, human-scannable order:
+ * timestamp → level → context → message → stack (errors only).
+ * This order is compatible with Datadog, CloudWatch, and ELK parsers.
+ */
+export const prodFormat = combine(
+  timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  errors({ stack: true }),
+  printf(({ timestamp: ts, level, context, message, stack, ...meta }) => {
+    const entry: Record<string, unknown> = {
+      timestamp: ts,
+      level,
+      context: (context as string | undefined) ?? 'App',
+      message,
+    };
+    if (stack) entry['stack'] = stack;
+    const keys = Object.keys(meta);
+    if (keys.length > 0) entry['meta'] = meta;
+    return JSON.stringify(entry);
+  }),
+);
 
 /**
  * Winston format for the development console transport.
@@ -33,9 +57,5 @@ export const fileTransport = new winston.transports.DailyRotateFile({
   maxSize: '20m',
   maxFiles: '14d',
   level: 'error',
-  format: combine(
-    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    errors({ stack: true }),
-    json(),
-  ),
+  format: prodFormat,
 });

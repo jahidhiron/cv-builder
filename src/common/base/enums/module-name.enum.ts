@@ -8,4 +8,5 @@ export enum ModuleName {
   Permission = 'permissions',
   User = 'users',
   RateLimit = 'rate-limit',
+  ErrorTracking = 'error-tracking',
 }

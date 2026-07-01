@@ -1,9 +1,8 @@
-import { ConfigService } from '@/config';
 import { JwtPayload, UserPayload } from '@/modules/auth/interfaces';
+import { JwtService } from '@/shared/jwt';
 import { RedisService } from '@/shared/redis/redis.service';
 import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { BaseAuthGuard } from './base-auth.guard';
 
@@ -26,7 +25,6 @@ export class JwtAuthGuard extends BaseAuthGuard {
   constructor(
     protected override readonly reflector: Reflector,
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
     private readonly redisService: RedisService,
   ) {
     super(reflector);
@@ -50,9 +48,7 @@ export class JwtAuthGuard extends BaseAuthGuard {
     }
 
     try {
-      const payload = this.jwtService.verify<JwtPayload>(token, {
-        secret: this.configService.jwt.accessSecret,
-      });
+      const payload = this.jwtService.verifyAccessToken<JwtPayload>(token);
       request.user = {
         id: Number(payload.sub),
         name: payload.name,
@@ -77,7 +73,8 @@ export class JwtAuthGuard extends BaseAuthGuard {
   }
 
   private extractToken(request: Request): string | null {
-    const cookieToken = (request as Request & { cookies?: Record<string, string> }).cookies?.accessToken;
+    const cookies = request.cookies as Record<string, string | undefined>;
+    const cookieToken = cookies['accessToken'];
     if (cookieToken) return cookieToken;
 
     const auth = request.headers.authorization;

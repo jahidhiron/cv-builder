@@ -34,6 +34,20 @@ export class CreateRefreshTokenProvider extends BaseCreateProvider<
     super(ModuleName.Auth, repo, errorResponse);
   }
 
+  /**
+   * Transforms the raw DTO into a persistable {@link RefreshToken} payload.
+   *
+   * Steps performed:
+   * 1. **Hash** — derives an scrypt hash of the raw JWT so the database never
+   *    stores a replayable token string.
+   * 2. **Expiry** — computes `expiresAt` from `dto.expiresIn`; falls back to
+   *    the configured `refreshTokenExpiredIn` when the field is absent.
+   * 3. **Device fingerprint** — derives `familyId` from the current request so
+   *    all tokens for the same device share one revocation handle.
+   *
+   * @param dto     - Raw refresh-token data supplied by the caller.
+   * @returns       The entity payload ready for insertion by the base provider.
+   */
   protected override async buildPayload(dto: CreateRefreshTokenDto): Promise<DeepPartial<RefreshToken>> {
     const tokenHash = await this.hashService.createHash(dto.token);
     const ttl = dto.expiresIn ?? this.configService.jwt.refreshTokenExpiredIn;

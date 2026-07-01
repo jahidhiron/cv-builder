@@ -1,6 +1,8 @@
+import { ModuleName } from '@/common/base/enums';
 import { ListParams, ListResult } from '@/common/base/repositories/interfaces';
-import { BaseProvider } from './base.provider';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import type { ObjectLiteral } from 'typeorm';
+import { BaseProvider } from './base.provider';
 
 /**
  * Abstract base for providers that return a flat list of entities.
@@ -36,6 +38,7 @@ export abstract class BaseListProvider<
    * @param dto - Query parameters forwarded to `buildParams`.
    * @returns `{ items }` — the matched entities.
    */
+  @SystemLog(ModuleName.Common)
   override async execute(dto: D): Promise<ListResult<T>> {
     return this.repo.list(this.buildParams(dto));
   }

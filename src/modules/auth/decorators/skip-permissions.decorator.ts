@@ -8,10 +8,5 @@ export const SKIP_PERMISSIONS_KEY = 'skipPermissions';
  * Use sparingly — typically for admin-only or internal endpoints where a coarser
  * guard (e.g. `AdminGuard`) already protects access.
  *
- * @example
- * ```ts
- * \@SkipPermissions()
- * \@Get('admin/stats')
- * ```
  */
 export const SkipPermissions = () => SetMetadata(SKIP_PERMISSIONS_KEY, true);

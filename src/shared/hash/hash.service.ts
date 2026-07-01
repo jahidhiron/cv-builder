@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomBytes, timingSafeEqual } from 'crypto';
-import { HASH_ENCODING_FORMAT, HASH_KEY_LENGTH, HASH_SALT_BYTE_SIZE } from './hash.constants';
-import { scryptAsync } from './hash.utils';
+import { HASH_ENCODING_FORMAT, HASH_KEY_LENGTH, HASH_SALT_BYTE_SIZE } from './constants';
+import { scryptAsync } from './utils';
 
 /**
  * Provides cryptographic helpers for password hashing and secure token generation.

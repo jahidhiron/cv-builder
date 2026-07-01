@@ -1,6 +1,7 @@
 import { ModuleName } from '@/common/base/enums';
 import { ConfigService } from '@/config';
 import { AppLogger } from '@/config/logger';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { QueueDto, QueueListResponseDto } from '@/modules/healths/dtos';
 import { RabbitMqQueueApiResponse } from '@/modules/healths/providers/interfaces';
 import { HttpClientService } from '@/shared/http-client';
@@ -8,8 +9,22 @@ import { ErrorResponse } from '@/shared/response';
 import { Injectable } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 
+/**
+ * Provider that fetches all RabbitMQ queues from the management API
+ * and returns them as enriched {@link QueueDto} objects.
+ *
+ * Optionally filters to a single queue when `RABBITMQ_QUEUE` is configured.
+ *
+ * @module Health
+ */
 @Injectable()
 export class QueueListProvider {
+  /**
+   * @param logger - Application logger used to record fetch failures.
+   * @param configService - Configuration source for RabbitMQ connection details.
+   * @param errorResponse - Shared utility for building standardised error responses.
+   * @param httpClient - HTTP client used to call the RabbitMQ management API.
+   */
   constructor(
     private readonly logger: AppLogger,
     private readonly configService: ConfigService,
@@ -18,9 +33,10 @@ export class QueueListProvider {
   ) {}
 
   /**
-   * Convert idle_since ISO string to seconds since last message
-   * @param idleSince ISO date string
-   * @returns seconds elapsed or undefined
+   * Converts a RabbitMQ `idle_since` ISO timestamp to elapsed seconds.
+   *
+   * @param idleSince - ISO 8601 date string from the RabbitMQ API, or `undefined` if the queue is active.
+   * @returns Seconds elapsed since the queue last received a message, or `undefined` if not idle.
    */
   private idleSinceSeconds(idleSince?: string): number | undefined {
     if (!idleSince) return undefined;
@@ -28,9 +44,15 @@ export class QueueListProvider {
   }
 
   /**
-   * Fetch all RabbitMQ queues with enriched metrics
-   * @returns List of queues with stats or error response
+   * Fetches all queues from the RabbitMQ management API and maps them to {@link QueueDto} objects.
+   *
+   * Each DTO includes message counts, consumer count, publish/deliver/ack rates,
+   * memory usage, idle time, and dead-letter configuration.
+   * Returns a 404 when no queues are found and a 500 on unexpected errors.
+   *
+   * @returns A {@link QueueListResponseDto} on success, or an error response on failure.
    */
+  @SystemLog(ModuleName.Health)
   async execute(): Promise<QueueListResponseDto> {
     const { apiURI, username, password, rabbitmqQueue } = this.configService.rabbitmq;
     const url = `${apiURI}/queues/%2f`;
@@ -50,10 +72,8 @@ export class QueueListProvider {
         });
       }
 
-      // Optional: filter by default queue if needed
       const filtered = rabbitmqQueue ? data.filter((q) => q.name === rabbitmqQueue) : data;
 
-      // Map to professional QueueDto with enriched metrics
       const queues: QueueDto[] = filtered.map((q) => {
         const stats = q.message_stats ?? {};
         const args = q.arguments ?? {};

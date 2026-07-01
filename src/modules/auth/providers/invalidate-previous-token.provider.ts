@@ -1,5 +1,6 @@
 import { BaseUpdateProvider } from '@/common/base';
 import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { VerificationToken } from '@/modules/auth/entities/verification-token.entity';
 import { VerificationTokenRepository } from '@/modules/auth/repositories';
 import { ErrorResponse } from '@/shared/response';
@@ -18,7 +19,10 @@ export class InvalidatePreviousTokenProvider extends BaseUpdateProvider<
   VerificationToken,
   DeepPartial<VerificationToken>
 > {
-  constructor(repo: VerificationTokenRepository, errorResponse: ErrorResponse) {
+  constructor(
+    repo: VerificationTokenRepository,
+    errorResponse: ErrorResponse,
+  ) {
     super(ModuleName.Auth, repo, errorResponse);
   }
 
@@ -29,6 +33,7 @@ export class InvalidatePreviousTokenProvider extends BaseUpdateProvider<
    * First-time users have no token to invalidate — 0 rows affected is not an error.
    * `repo.update` returns `null` silently when nothing matches.
    */
+  @SystemLog(ModuleName.Auth)
   override async execute(
     where: FindOptionsWhere<VerificationToken>,
     dto: DeepPartial<VerificationToken>,

@@ -1,15 +1,17 @@
+import { ModuleName } from '@/common/base';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { HttpService } from '@nestjs/axios';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   AxiosError,
   AxiosHeaders,
-  AxiosRequestConfig,
+  type AxiosRequestConfig,
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from 'axios';
 import { Observable, of } from 'rxjs';
 import { catchError, map, retry } from 'rxjs/operators';
-import { HTTP_CLIENT_OPTIONS } from './http-client.constants';
+import { HTTP_CLIENT_OPTIONS } from './constants';
 import { HttpResponse } from './interfaces';
 
 /**
@@ -29,6 +31,11 @@ export class HttpClientService {
   private readonly httpTimeout: number | undefined;
   private readonly defaultHeaders: Record<string, string> | undefined;
 
+  /**
+   * @param httpService - Underlying `@nestjs/axios` `HttpService` whose shared axios instance is configured.
+   * @param options - Raw injected `HTTP_CLIENT_OPTIONS` value; narrowed and defaulted internally since its
+   *                  shape is only guaranteed at the `HttpClientOptions` type level for callers.
+   */
   constructor(
     private readonly httpService: HttpService,
     @Inject(HTTP_CLIENT_OPTIONS) options: unknown,
@@ -145,6 +152,7 @@ export class HttpClientService {
    * @param config - Optional Axios request config (headers, params, etc.).
    * @returns Observable that emits a single `HttpResponse<T>`.
    */
+  @SystemLog(ModuleName.Shared)
   get<T = unknown>(url: string, config?: AxiosRequestConfig): Observable<HttpResponse<T>> {
     return this.handleRequest(this.httpService.get<T>(url, config));
   }
@@ -157,6 +165,7 @@ export class HttpClientService {
    * @param config - Optional Axios request config.
    * @returns Observable that emits a single `HttpResponse<T>`.
    */
+  @SystemLog(ModuleName.Shared)
   post<T = unknown>(
     url: string,
     data?: unknown,
@@ -173,6 +182,7 @@ export class HttpClientService {
    * @param config - Optional Axios request config.
    * @returns Observable that emits a single `HttpResponse<T>`.
    */
+  @SystemLog(ModuleName.Shared)
   put<T = unknown>(
     url: string,
     data?: unknown,
@@ -189,6 +199,7 @@ export class HttpClientService {
    * @param config - Optional Axios request config.
    * @returns Observable that emits a single `HttpResponse<T>`.
    */
+  @SystemLog(ModuleName.Shared)
   patch<T = unknown>(
     url: string,
     data?: unknown,
@@ -204,6 +215,7 @@ export class HttpClientService {
    * @param config - Optional Axios request config.
    * @returns Observable that emits a single `HttpResponse<T>`.
    */
+  @SystemLog(ModuleName.Shared)
   delete<T = unknown>(url: string, config?: AxiosRequestConfig): Observable<HttpResponse<T>> {
     return this.handleRequest(this.httpService.delete<T>(url, config));
   }
@@ -216,6 +228,7 @@ export class HttpClientService {
    * @param config - Optional Axios request config.
    * @returns Observable that emits a single `HttpResponse<T>` (data will always be null).
    */
+  @SystemLog(ModuleName.Shared)
   head<T = unknown>(url: string, config?: AxiosRequestConfig): Observable<HttpResponse<T>> {
     return this.handleRequest(this.httpService.head<T>(url, config));
   }

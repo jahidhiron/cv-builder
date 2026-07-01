@@ -1,3 +1,4 @@
+/** Maps every supported HTTP status name to its numeric code and status-text context. */
 export const HTTP_STATUS = {
   CONTINUE: { context: 'CONTINUE', status: 100 },
   SWITCHING_PROTOCOLS: { context: 'SWITCHING_PROTOCOLS', status: 101 },
@@ -68,4 +69,5 @@ export const HTTP_STATUS = {
   LOOP_DETECTED: { context: 'LOOP_DETECTED', status: 508 },
 } as const;
 
+/** Union of all valid `HTTP_STATUS` keys. */
 export type HttpStatus = keyof typeof HTTP_STATUS;

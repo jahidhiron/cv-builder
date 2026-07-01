@@ -7,11 +7,6 @@ import { Request } from 'express';
  *
  * Must be used on routes protected by `AuthGuard` (or any guard that sets `request.user`).
  *
- * @example
- * ```ts
- * \@Get('profile')
- * getProfile(\@CurrentUser() user: UserPayload) { … }
- * ```
  */
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): UserPayload => {

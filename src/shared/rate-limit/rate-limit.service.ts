@@ -13,11 +13,22 @@ import { Injectable, Scope } from '@nestjs/common';
  */
 @Injectable({ scope: Scope.REQUEST })
 export class RateLimitService {
+  /**
+   * @param incrementRateLimitProvider - Provider handling the Redis counter increment.
+   * @param errorResponse - Used to build the localised 429 error when a limit is exceeded.
+   */
   constructor(
     private readonly incrementRateLimitProvider: IncrementRateLimitProvider,
     private readonly errorResponse: ErrorResponse,
   ) {}
 
+  /**
+   * Checks and records a single hit against a rate limit, throwing when exceeded.
+   *
+   * @param payload - Identifier, action, and limit configuration to check against.
+   * @throws {HttpException} 429 Too Many Requests when the hit count exceeds
+   *         `payload.maxAttempts` within the current window.
+   */
   async checkLimit(payload: RateLimitPayload): Promise<void> {
     const { identifier, action, maxAttempts, windowMs } = payload;
     const key = `rl:${action}:${identifier}`;

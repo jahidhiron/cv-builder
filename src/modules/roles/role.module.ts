@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@/modules/activity-log/activity-log.module';
 import { ConfigModule } from '@/config';
 import { PermissionModule } from '@/modules/permissions/permission.module';
 import {
@@ -17,13 +18,19 @@ import { RoleService } from './role.service';
 
 /**
  * Feature module that wires up all role-management concerns:
- * CRUD operations, soft-delete/restore, and role–permission assignments.
+ * CRUD operations, soft-delete/restore, role–permission assignments,
+ * and Admin permission sync.
  *
- * Exports `RoleService` so other modules (e.g. auth) can query roles
+ * Imports {@link PermissionModule} to access permission providers and
+ * {@link DiscoveryModule} to enable route scanning in {@link SyncAdminPermissionsProvider}.
+ *
+ * Exports {@link RoleService} so other modules (e.g. auth) can query roles
  * without importing the full module.
+ *
+ * @module Role
  */
 @Module({
-  imports: [ConfigModule, PermissionModule, DiscoveryModule],
+  imports: [ConfigModule, PermissionModule, DiscoveryModule, ActivityLogModule],
   controllers: [RoleController],
   providers: [
     RoleRepository,

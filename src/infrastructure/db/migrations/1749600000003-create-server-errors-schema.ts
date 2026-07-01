@@ -22,6 +22,12 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 export class CreateServerErrorsSchema1749600000003 implements MigrationInterface {
   name = 'CreateServerErrorsSchema1749600000003';
 
+  /**
+   * Applies the migration: creates the `server_errors` table with indexes.
+   *
+   * @param queryRunner - TypeORM query runner used to execute SQL statements
+   * @returns Promise that resolves when all statements have executed
+   */
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "server_errors" (
@@ -55,6 +61,12 @@ export class CreateServerErrorsSchema1749600000003 implements MigrationInterface
     );
   }
 
+  /**
+   * Reverts the migration: drops the `server_errors` table.
+   *
+   * @param queryRunner - TypeORM query runner used to execute SQL statements
+   * @returns Promise that resolves when all statements have executed
+   */
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE "server_errors"`);
   }

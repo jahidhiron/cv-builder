@@ -67,9 +67,11 @@ AppModule
 │   ├── RabbitMqModule      (AMQP)
 │   └── CronModule          (@nestjs/schedule)
 ├── HealthModule
-├── AuthModule
+├── AuthModule               (imports RoleModule, UserModule, PermissionModule)
 ├── PermissionModule
 ├── UserModule
+├── ErrorTrackingModule      (imports ActivityLogModule)
+├── ActivityLogModule
 └── AppController / AppService
 ```
 
@@ -182,12 +184,13 @@ Non-business utilities that are shared by all feature modules.
 | `base/repositories/` | `BaseRepository<T>` generic CRUD |
 | `base/dtos/` | `ListOptionsDto` (pagination + sorting), `SortByDto`, `MetaDto` |
 | `base/enums/` | `ModuleName` — string keys for i18n namespacing |
+| `base/providers/` | `BaseCreateProvider`, `BaseUpdateProvider`, `BaseUpsertProvider`, `BaseDeleteProvider`, `BaseRestoreProvider`, `BaseListProvider`, `BasePaginatedListProvider`, etc. |
 | `filters/` | `GlobalExceptionFilter` |
 | `interceptors/` | `HttpLoggingInterceptor` |
-| `middlewares/` | `setupSecurity()` (Helmet + CORS), `setupSwaggerAuth()` |
+| `middlewares/` | `setupSecurity()` (Helmet + CORS), `setupSwaggerAuth()`, `requestContextMiddleware` (opens the `AsyncLocalStorage` scope used by activity logging) |
 | `pipes/` | `ValidationPipe`, `DeserializeQueryPipe`, `ParseIdPipe`, `BaseFilePipe` |
 | `swagger/` | `SwaggerApiSuccessResponse`, `BadRequestResponse`, `NotFoundResponse`, etc. |
-| `utils/` | `clientIp()`, `deviceFingerprint()` |
+| `utils/` | `clientIp()`, `clientAgent()`, `deviceFingerprint()` |
 
 ### Shared Layer (Global Services)
 
@@ -227,11 +230,15 @@ All migrations are in `src/infrastructure/db/migrations/`. Run with `pnpm run mi
 
 | File | Tables Created |
 |------|---------------|
-| `…001-create-rbac-schema` | `permissions`, `roles`, `role_permissions` + seed data |
-| `…002-create-users-and-auth-schema` | `users`, `verification_tokens`, `refresh_tokens`, `login_history`, `password_history`, `security_audit_logs` |
-| `…003-create-resume-content-schema` | `categories`, `resume_styles`, `section_types`, `user_profiles`, `templates`, `resumes`, `resume_sections` |
-| `…004-create-documents-schema` | `cover_letters`, `ats_scores`, `ai_generations`, `resume_imports`, `resume_exports` |
-| `…005-create-billing-schema` | `billing_intervals`, `plans`, `plan_features`, `plan_prices`, `subscriptions`, `subscription_events`, `entitlements` |
+| `…001-create-rbac-schema` | `roles`, `permissions`, `role_permissions` + seed data |
+| `…002-create-users-and-auth-schema` | `users`, `verification_tokens`, `refresh_tokens`, `login_histories`, `password_histories` |
+| `…003-create-server-errors-schema` | `server_errors` |
+| `…004-create-activity-logs-schema` | `request_logs`, `user_activity_logs`, `system_activity_logs` |
+| `…005-create-resume-content-schema` | `categories`, `resume_styles`, `section_types`, `profile_field_definitions`, `user_profiles`, `templates`, `resumes`, `resume_sections` |
+| `…006-create-documents-schema` | `cover_letters`, `ats_scores`, `ai_generations`, `resume_imports`, `resume_exports` |
+| `…007-create-billing-schema` | `billing_intervals`, `plans`, `plan_features`, `plan_prices`, `subscriptions`, `subscription_events`, `entitlements` |
+
+> Tables from migrations 005–007 (resume content, documents, billing) exist in the database ahead of their feature modules — those modules are not yet implemented under `src/modules/`.
 
 #### RealtimeModule
 
@@ -243,11 +250,16 @@ AMQP connection via `amqp-connection-manager`. Only active when `ENABLE_RABBITMQ
 
 #### CronModule
 
-Scheduled background jobs using `@Cron()` decorators — token cleanup, session timeout enforcement.
+Scheduled background jobs using `@Cron()` decorators, grouped by owning domain (e.g. `cron/auth/` — `PurgeExpiredTokensProvider` runs on a schedule to delete expired refresh/verification tokens).
 
 ---
 
 ## Feature Modules
+
+In addition to the CRUD-style modules (`auth`, `users`, `roles`, `permissions`), two cross-cutting modules ship as first-class feature modules:
+
+- **`activity-log`** — persists `request_logs` (one row per HTTP request, via `RequestLogInterceptor` registered globally as `APP_INTERCEPTOR`), `user_activity_logs` (business actions via `ActivityLogService.logUser()`), and `system_activity_logs` (provider-level operations via the `@SystemLog()` decorator). When `ENABLE_RABBITMQ=true`, writes are batched and deferred to a RabbitMQ consumer (`LogBundleConsumer`) instead of hitting the DB inline.
+- **`error-tracking`** — `GlobalExceptionFilter` reports unhandled 5xx errors here; `ErrorTrackingService` upserts a `server_errors` row (bumping an occurrence counter on repeat errors) and exposes an admin API to list/inspect/resolve/delete them, with optional email alerts.
 
 Each feature module follows the same structure:
 
@@ -373,6 +385,7 @@ interface AppResponse<T = any> {
   status: string;           // "OK", "CREATED", "NOT_FOUND", …
   statusCode: number;       // 200, 201, 404, …
   path: string;             // Request path
+  correlationId: string;    // Request ID from ActivityLogContext (AsyncLocalStorage)
   timestamp: string;        // ISO 8601
   message: string;          // i18n-resolved message
   data?: T;                 // Present on success responses with a body

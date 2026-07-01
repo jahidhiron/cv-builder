@@ -1,9 +1,11 @@
 import { ModuleName } from '@/common/base/enums';
 import { ConfigService } from '@/config';
-import { SecurityAuditEvent } from '@/modules/auth/entities/security-audit-log.entity';
+import { ActivityLogService } from '@/modules/activity-log/activity-log.service';
+import { SystemLog } from '@/modules/activity-log/decorators';
+import { LogStatus } from '@/modules/activity-log/enums';
+import { AuthAction } from '@/modules/auth/enums/auth-action.enum';
 import { TokenType } from '@/modules/auth/enums';
 import { VerificationTokenPayload } from '@/modules/auth/interfaces';
-import { AuditLogProvider } from '@/modules/auth/providers/audit-log.provider';
 import { CheckPasswordHistoryProvider } from '@/modules/auth/providers/check-password-history.provider';
 import { RevokeRefreshTokenProvider } from '@/modules/auth/providers/revoke-refresh-token.provider';
 import { SavePasswordHistoryProvider } from '@/modules/auth/providers/save-password-history.provider';
@@ -11,7 +13,7 @@ import { VerifyTokenProvider } from '@/modules/auth/providers/verify-token.provi
 import { UserService } from '@/modules/users/user.service';
 import { HashService } from '@/shared/hash/hash.service';
 import { HibpService } from '@/shared/hibp/hibp.service';
-import { SendEmailParams } from '@/shared/mail/interfaces';
+import { buildResetPasswordEmail } from '@/modules/auth/mail';
 import { MailService } from '@/shared/mail/mail.service';
 import { RedisService } from '@/shared/redis/redis.service';
 import { ErrorResponse } from '@/shared/response';
@@ -44,9 +46,36 @@ export class ResetPasswordProvider {
     private readonly checkPasswordHistory: CheckPasswordHistoryProvider,
     private readonly savePasswordHistory: SavePasswordHistoryProvider,
     private readonly hibpService: HibpService,
-    private readonly auditLog: AuditLogProvider,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
+  /**
+   * Resets a user's password using a one-time `ForgotPassword` token.
+   *
+   * Steps:
+   * 1. **Pre-validation** — verifies the new password is not the same as the
+   *    current one, is not in the last 5 password hashes, and has not appeared
+   *    in known data breaches (HIBP). Done before token consumption because
+   *    token consumption is irreversible — a failed check preserves the reset link.
+   * 2. **Token validation** — delegates to {@link VerifyTokenProvider}, which
+   *    resolves the user, checks the token record, rejects expired tokens, and
+   *    atomically marks the token as consumed.
+   * 3. **Password update** — hashes and persists the new password; saves the
+   *    hash to password history to enforce future reuse checks.
+   * 4. **Session revocation** — revokes all DB refresh tokens, blacklists live
+   *    access tokens in Redis, and wipes all session keys so every active device
+   *    is forced to re-authenticate immediately.
+   * 5. **Confirmation email** — notifies the account owner that their password
+   *    has been changed.
+   *
+   * @param dto - Contains `email`, one-time `token`, and the new `password`.
+   * @returns Resolves when the password has been reset and confirmation email sent.
+   * @throws {ForbiddenException}          When the new password matches the current one.
+   * @throws {UnprocessableEntityException} When the new password was used recently or is breached.
+   * @throws {NotFoundException}            When the user or token record is not found.
+   * @throws {BadRequestException}          On expired or already-applied token.
+   */
+  @SystemLog(ModuleName.Auth)
   async execute(dto: ResetPasswordDto): Promise<void> {
     // Validate before consuming — token consumption is irreversible, so a failed check here preserves the reset link.
     const { user: userForCheck } = await this.userService.findOne(
@@ -56,6 +85,12 @@ export class ResetPasswordProvider {
     if (userForCheck?.password) {
       const isSame = await this.hashService.verify(userForCheck.password, dto.password);
       if (isSame) {
+        this.activityLog.logUser({
+          action: AuthAction.ResetPasswordFailed,
+          status: LogStatus.Failed,
+          userId: userForCheck.id,
+          metadata: { email: dto.email, reason: 'match-old-password' },
+        });
         await this.errorResponse.forbidden({ module: ModuleName.Auth, key: 'match-old-password' });
       }
     }
@@ -74,16 +109,11 @@ export class ResetPasswordProvider {
     };
 
     const user = await this.verifyToken.execute(payload);
-    if (!user) {
-      return this.errorResponse.notFound({ module: ModuleName.User, key: 'user-not-found' });
-    }
 
     const newHash = await this.hashService.createHash(dto.password);
     await this.userService.update({ id: user.id }, { password: newHash });
     await this.savePasswordHistory.execute({ userId: user.id, passwordHash: newHash });
 
-    // Revoke all DB refresh tokens, blacklist live access tokens, and wipe Redis sessions
-    // so all active devices are forcibly signed out immediately.
     await this.revokeRefreshToken.execute({ userId: user.id }, { reason: 'password-reset' });
     const staleKeys = await this.redisService.keys(`auth:${user.id}:*`);
     if (staleKeys.length) {
@@ -102,19 +132,13 @@ export class ResetPasswordProvider {
       );
     }
 
-    const { app, mail } = this.configService;
-    const emailParams: SendEmailParams = {
-      module: ModuleName.Auth,
-      template: 'reset-password',
-      to: user.email,
-      subject: `Your ${app.companyName} password has been reset`,
-      context: {
-        name: user.name,
-        logoUrl: mail.logoUrl,
-        supportEmail: mail.supportEmail,
-      },
-    };
-    await this.emailService.sendEmail(emailParams);
-    this.auditLog.log({ event: SecurityAuditEvent.PasswordReset, userId: user.id });
+    await this.emailService.sendEmail(
+      buildResetPasswordEmail({ ...user }, { companyName: this.configService.app.companyName }),
+    );
+    this.activityLog.logUser({
+      action: AuthAction.ResetPasswordSuccess,
+      userId: user.id,
+      metadata: { email: user.email },
+    });
   }
 }

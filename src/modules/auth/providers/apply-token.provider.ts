@@ -1,5 +1,6 @@
 import { ModuleName } from '@/common/base/enums';
 import { BaseProvider } from '@/common/base/providers/base.provider';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { VerificationToken } from '@/modules/auth/entities/verification-token.entity';
 import type { ApplyTokenParams } from '@/modules/auth/providers/interfaces';
 import { VerificationTokenRepository } from '@/modules/auth/repositories';
@@ -15,10 +16,14 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class ApplyTokenProvider extends BaseProvider<VerificationToken> {
-  constructor(repo: VerificationTokenRepository, errorResponse: ErrorResponse) {
+  constructor(
+    repo: VerificationTokenRepository,
+    errorResponse: ErrorResponse,
+  ) {
     super(ModuleName.Auth, repo, errorResponse);
   }
 
+  @SystemLog(ModuleName.Auth)
   override async execute({ id }: ApplyTokenParams): Promise<void> {
     const rows = await this.repo.rawQuery<{ id: number }>(
       'UPDATE verification_tokens SET applied = true WHERE id = $1 AND applied = false RETURNING id',

@@ -24,11 +24,6 @@ export const getBaseDatabaseConfig = ({
   const app = config.app;
   const db = config.db;
 
-  // Schema is migrations-only. `synchronize` is hard-coded to `false` so that
-  // accidental local overrides of `NODE_ENV` (or mistakes in `isDev`) can
-  // never auto-rewrite the billing/identity tables. To roll out a schema
-  // change, add a new file under `src/db/migrations/` and run
-  // `pnpm migration:run` (or set `MIGRATIONS_RUN=true` on bootstrap).
   const baseConfig: TypeOrmModuleOptions & DataSourceOptions = {
     type: db.type,
     entities: [__dirname + '/../../../**/*.entity{.ts,.js}'],
@@ -37,9 +32,7 @@ export const getBaseDatabaseConfig = ({
     dropSchema: app.isTest,
     migrationsRun: db.migrationsRun,
     namingStrategy: new NamingStrategy(),
-    // Explicit pool bounds prevent pg from exhausting idle connections and
-    // returning the same PoolClient to concurrent callers, which triggers the
-    // "Calling client.query() when already executing" deprecation in pg@8.
+    // Explicit bounds prevent pg@8 from returning the same PoolClient to concurrent callers.
     extra: {
       max: 20,
       min: 2,

@@ -81,7 +81,7 @@ export class R2StorageService implements OnModuleInit {
     const { r2BucketName, r2PublicBaseUrl } = this.config.storage;
 
     // Multer's Buffer arrives as a numeric-keyed plain object after NestJS pipeline
-    // serialisation. Object.values() reconstructs the byte array in correct order.
+    // serialisation; Object.values() reconstructs the byte array in correct order.
     const body: Buffer = Buffer.isBuffer(file.buffer)
       ? file.buffer
       : Buffer.from(Object.values(file.buffer as Record<string, number>));

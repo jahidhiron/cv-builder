@@ -1,9 +1,12 @@
 import { ModuleName } from '@/common/base/enums';
 import { ConfigService } from '@/config';
-import { SecurityAuditEvent } from '@/modules/auth/entities/security-audit-log.entity';
+import { ActivityLogService } from '@/modules/activity-log/activity-log.service';
+import { SystemLog } from '@/modules/activity-log/decorators';
+import { LogStatus } from '@/modules/activity-log/enums';
 import { TokenType, UserRole } from '@/modules/auth/enums';
+import { AuthAction } from '@/modules/auth/enums/auth-action.enum';
 import { TokenPayload } from '@/modules/auth/interfaces';
-import { AuditLogProvider } from '@/modules/auth/providers/audit-log.provider';
+import { buildVerifyEmail } from '@/modules/auth/mail';
 import { CreateTokenProvider } from '@/modules/auth/providers/create-token.provider';
 import { SavePasswordHistoryProvider } from '@/modules/auth/providers/save-password-history.provider';
 import { RoleService } from '@/modules/roles/role.service';
@@ -11,22 +14,20 @@ import { User } from '@/modules/users/entities/user.entity';
 import { UserService } from '@/modules/users/user.service';
 import { HashService } from '@/shared/hash/hash.service';
 import { HibpService } from '@/shared/hibp/hibp.service';
-import { SendEmailParams } from '@/shared/mail/interfaces';
 import { MailService } from '@/shared/mail/mail.service';
 import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
 import { SignupDto } from '../dtos';
 
 /**
- * Handles the email/password registration flow.
+ * Handles the end-to-end email/password registration flow.
  *
- * Steps:
- * 1. Rejects duplicate email addresses.
- * 2. Resolves the default `User` role (fails loudly when the role seed is missing).
- * 3. Hashes the password with scrypt.
- * 4. Persists the new user.
- * 5. Generates an email-verification token.
- * 6. Sends the verification email.
+ * Orchestrates duplicate detection, role resolution, breach-password
+ * rejection, user creation, password-history seeding, token issuance,
+ * and verification-email dispatch in a single request-scoped unit.
+ *
+ * Decorated with `@SystemLog` so every invocation is recorded in the
+ * activity-log regardless of outcome.
  */
 @Injectable({ scope: Scope.REQUEST })
 export class SignupProvider {
@@ -40,28 +41,52 @@ export class SignupProvider {
     private readonly emailService: MailService,
     private readonly savePasswordHistory: SavePasswordHistoryProvider,
     private readonly hibpService: HibpService,
-    private readonly auditLog: AuditLogProvider,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
   /**
-   * @param dto - Registration payload (name, email, password).
-   * @returns The newly created user.
-   * @throws {ConflictException} When the email is already registered.
-   * @throws {NotFoundException} When the default `User` role is missing from the database.
+   * Registers a new user account and sends a verification email.
+   *
+   * Execution order:
+   * 1. **Duplicate check** — rejects the request if the email is already
+   *    registered and emits a `SignupFailed` activity-log entry.
+   * 2. **Role resolution** — fetches the default `User` role; throws 404
+   *    when the role seed is absent from the database.
+   * 3. **Breach check** — validates the password against the HIBP dataset;
+   *    rejects passwords found in known data breaches.
+   * 4. **Password hashing** — derives a scrypt hash of the plaintext password.
+   * 5. **User creation** — persists the new user with `emailVerified: false`.
+   * 6. **Password history** — saves the initial hash so future changes can
+   *    enforce reuse policies.
+   * 7. **Token issuance** — generates a short-lived `VerifyEmail` JWT.
+   * 8. **Email dispatch** — sends the verification email containing the
+   *    deep-link back to the client.
+   *
+   * @param dto - Registration payload containing `name`, `email`, and `password`.
+   * @returns The newly created {@link User} entity (pre-verification).
+   * @throws {ConflictException} When `dto.email` is already registered.
+   * @throws {NotFoundException} When the default `User` role is absent from the database.
+   * @throws {BadRequestException} When `dto.password` appears in a known data breach.
    */
-  async execute(dto: SignupDto): Promise<User> {
-    const existing = await this.userService.exists({ email: dto.email });
-    if (existing) {
+  @SystemLog(ModuleName.Auth)
+  async execute(dto: SignupDto): Promise<{ user: User }> {
+    const { exists } = await this.userService.exists({ email: dto.email });
+    if (exists) {
+      this.activityLog.logUser({
+        action: AuthAction.SignupFailed,
+        status: LogStatus.Failed,
+        metadata: { email: dto.email, reason: 'email-already-registered' },
+      });
       return this.errorResponse.conflict({ module: ModuleName.Auth, key: 'email-exist' });
     }
 
     const { role } = await this.roleService.findOne({ name: UserRole.User, isDeleted: false });
 
-    // await this.hibpService.checkPassword(dto.password);
+    await this.hibpService.checkPassword(dto.password);
 
     const passwordHash = await this.hashService.createHash(dto.password);
 
-    const user = await this.userService.create({
+    const { user } = await this.userService.create({
       name: dto.name,
       email: dto.email,
       password: passwordHash,
@@ -70,26 +95,23 @@ export class SignupProvider {
     } as Partial<User>);
 
     await this.savePasswordHistory.execute({ userId: user.id, passwordHash });
-    this.auditLog.log({ event: SecurityAuditEvent.Signup, userId: user.id });
 
     const tokenPayload: TokenPayload = { type: TokenType.VerifyEmail, user };
     const tokenData = await this.createToken.execute(tokenPayload);
 
-    const verifyUrl = `${this.configService.app.clientBaseUrl}/auth/verify-email?email=${user.email}&token=${tokenData.token}`;
-    const emailParams: SendEmailParams = {
-      module: ModuleName.Auth,
-      template: 'signup',
-      to: user.email,
-      subject: 'Verify Your Account',
-      context: {
-        name: user.name,
-        verifyUrl,
-        logoUrl: this.configService.mail.logoUrl,
-        supportEmail: this.configService.mail.supportEmail,
-      },
-    };
-    await this.emailService.sendEmail(emailParams);
+    await this.emailService.sendEmail(
+      buildVerifyEmail(
+        { ...user, token: tokenData.token },
+        { clientBaseUrl: this.configService.app.clientBaseUrl },
+      ),
+    );
 
-    return user;
+    this.activityLog.logUser({
+      action: AuthAction.SignupSuccess,
+      userId: user.id,
+      metadata: { email: user.email },
+    });
+
+    return { user };
   }
 }

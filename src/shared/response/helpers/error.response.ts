@@ -1,5 +1,5 @@
-﻿import { HTTP_STATUS } from '@/shared/response/constants';
-import { HttpException, Injectable, Scope } from '@nestjs/common';
+import { HTTP_STATUS } from '@/shared/response/constants';
+import { HttpException, Injectable } from '@nestjs/common';
 import { ResponseService } from '../response.service';
 import { ResponseParams } from '../types';
 
@@ -7,25 +7,20 @@ import { ResponseParams } from '../types';
  * Request-scoped helper that throws typed `HttpException`s for every common
  * 4xx and 5xx HTTP error status.
  *
- * Each method builds a standardised {@link AppResponse} error envelope via
- * {@link ResponseService}, wraps it in an `HttpException`, and throws â€” so the
- * return type is always `Promise<never>`. NestJS's global exception filter
- * serialises the envelope to JSON and sets the correct HTTP status code.
- *
- * @example
- * ```ts
- * const user = await this.userRepo.findById(id);
- * if (!user) await this.errorResponse.notFound({ module: 'users', key: 'not-found' });
- * ```
+ * Each method builds a standardised error envelope via {@link ResponseService},
+ * wraps it in an `HttpException`, and throws -- so the return type is always
+ * `Promise<never>`. NestJS's global exception filter serialises the envelope
+ * to JSON and sets the correct HTTP status code.
  */
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class ErrorResponse {
   constructor(private readonly responseService: ResponseService) {}
 
   /**
-   * 400 Bad Request â€” the request is malformed or contains invalid parameters.
+   * 400 Bad Request -- the request is malformed or contains invalid parameters.
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 400 status.
    */
   async badRequest<T extends object = any>(params: ResponseParams<T>): Promise<never> {
     params.message ||= 'Bad Request';
@@ -34,9 +29,24 @@ export class ErrorResponse {
   }
 
   /**
-   * 402 Payment Required â€” the request requires payment to proceed.
+   * 401 Unauthorized -- missing or invalid authentication credentials.
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 401 status.
+   */
+  async unauthorized<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
+    params.message ||= 'Unauthorized';
+    const response = await this.responseService.error<T>(HTTP_STATUS.UNAUTHORIZED.context, params);
+    throw new HttpException(response, HTTP_STATUS.UNAUTHORIZED.status);
+  }
+
+  /**
+   * 402 Payment Required -- the request requires payment to proceed.
+   *
+   * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 402 status.
    */
   async paymentRequired<T extends object = any>(
     params: ResponseParams<T> = {} as ResponseParams<T>,
@@ -50,22 +60,10 @@ export class ErrorResponse {
   }
 
   /**
-   * 401 Unauthorized â€” missing or invalid authentication credentials.
+   * 403 Forbidden -- authenticated but not authorised to perform the action.
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
-   */
-  async unauthorized<T extends object = any>(
-    params: ResponseParams<T> = {} as ResponseParams<T>,
-  ): Promise<never> {
-    params.message ||= 'Unauthorized';
-    const response = await this.responseService.error<T>(HTTP_STATUS.UNAUTHORIZED.context, params);
-    throw new HttpException(response, HTTP_STATUS.UNAUTHORIZED.status);
-  }
-
-  /**
-   * 403 Forbidden â€” authenticated but not authorised to perform the action.
-   *
-   * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 403 status.
    */
   async forbidden<T extends object = any>(params: ResponseParams<T>): Promise<never> {
     params.message ||= 'Forbidden';
@@ -74,9 +72,10 @@ export class ErrorResponse {
   }
 
   /**
-   * 404 Not Found â€” the requested resource does not exist.
+   * 404 Not Found -- the requested resource does not exist.
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 404 status.
    */
   async notFound<T extends object = any>(params: ResponseParams<T>): Promise<never> {
     params.message ||= 'Not Found';
@@ -85,65 +84,10 @@ export class ErrorResponse {
   }
 
   /**
-   * 410 Gone â€” the resource existed but has been permanently removed.
+   * 408 Request Timeout -- the server timed out waiting for the request.
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
-   */
-  async gone<T extends object = any>(
-    params: ResponseParams<T> = {} as ResponseParams<T>,
-  ): Promise<never> {
-    params.message ||= 'Gone';
-    const response = await this.responseService.error<T>(HTTP_STATUS.GONE.context, params);
-    throw new HttpException(response, HTTP_STATUS.GONE.status);
-  }
-
-  /**
-   * 409 Conflict â€” the request conflicts with the current state of the resource
-   * (e.g. duplicate email address on registration).
-   *
-   * @param params - i18n keys or direct message, plus optional payload fields.
-   */
-  async conflict<T extends object = any>(params: ResponseParams<T>): Promise<never> {
-    params.message ||= 'Conflict';
-    const response = await this.responseService.error<T>(HTTP_STATUS.CONFLICT.context, params);
-    throw new HttpException(response, HTTP_STATUS.CONFLICT.status);
-  }
-
-  /**
-   * 422 Unprocessable Entity â€” the request is syntactically valid but semantically
-   * incorrect (e.g. validation failures on a well-formed payload).
-   *
-   * @param params - i18n keys or direct message, plus optional payload fields.
-   */
-  async unprocessableEntity<T extends object = any>(params: ResponseParams<T>): Promise<never> {
-    params.message ||= 'Unprocessable Entity';
-    const response = await this.responseService.error<T>(
-      HTTP_STATUS.UNPROCESSABLE_ENTITY.context,
-      params,
-    );
-    throw new HttpException(response, HTTP_STATUS.UNPROCESSABLE_ENTITY.status);
-  }
-
-  /**
-   * 429 Too Many Requests â€” the client has exceeded the allowed request rate.
-   *
-   * @param params - i18n keys or direct message, plus optional payload fields.
-   */
-  async tooManyRequests<T extends object = any>(
-    params: ResponseParams<T> = {} as ResponseParams<T>,
-  ): Promise<never> {
-    params.message ||= 'Too Many Requests';
-    const response = await this.responseService.error<T>(
-      HTTP_STATUS.TOO_MANY_REQUESTS.context,
-      params,
-    );
-    throw new HttpException(response, HTTP_STATUS.TOO_MANY_REQUESTS.status);
-  }
-
-  /**
-   * 408 Request Timeout â€” the server timed out waiting for the request.
-   *
-   * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 408 status.
    */
   async requestTimeout<T extends object = any>(
     params: ResponseParams<T> = {} as ResponseParams<T>,
@@ -157,9 +101,70 @@ export class ErrorResponse {
   }
 
   /**
-   * 500 Internal Server Error â€” an unexpected condition was encountered.
+   * 409 Conflict -- the request conflicts with the current state of the resource
+   * (e.g. duplicate email address on registration).
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 409 status.
+   */
+  async conflict<T extends object = any>(params: ResponseParams<T>): Promise<never> {
+    params.message ||= 'Conflict';
+    const response = await this.responseService.error<T>(HTTP_STATUS.CONFLICT.context, params);
+    throw new HttpException(response, HTTP_STATUS.CONFLICT.status);
+  }
+
+  /**
+   * 410 Gone -- the resource existed but has been permanently removed.
+   *
+   * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 410 status.
+   */
+  async gone<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
+    params.message ||= 'Gone';
+    const response = await this.responseService.error<T>(HTTP_STATUS.GONE.context, params);
+    throw new HttpException(response, HTTP_STATUS.GONE.status);
+  }
+
+  /**
+   * 422 Unprocessable Entity -- the request is syntactically valid but semantically
+   * incorrect (e.g. validation failures on a well-formed payload).
+   *
+   * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 422 status.
+   */
+  async unprocessableEntity<T extends object = any>(params: ResponseParams<T>): Promise<never> {
+    params.message ||= 'Unprocessable Entity';
+    const response = await this.responseService.error<T>(
+      HTTP_STATUS.UNPROCESSABLE_ENTITY.context,
+      params,
+    );
+    throw new HttpException(response, HTTP_STATUS.UNPROCESSABLE_ENTITY.status);
+  }
+
+  /**
+   * 429 Too Many Requests -- the client has exceeded the allowed request rate.
+   *
+   * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 429 status.
+   */
+  async tooManyRequests<T extends object = any>(
+    params: ResponseParams<T> = {} as ResponseParams<T>,
+  ): Promise<never> {
+    params.message ||= 'Too Many Requests';
+    const response = await this.responseService.error<T>(
+      HTTP_STATUS.TOO_MANY_REQUESTS.context,
+      params,
+    );
+    throw new HttpException(response, HTTP_STATUS.TOO_MANY_REQUESTS.status);
+  }
+
+  /**
+   * 500 Internal Server Error -- an unexpected condition was encountered.
+   *
+   * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 500 status.
    */
   async internalServerError<T extends object = any>(
     params: ResponseParams<T> = {} as ResponseParams<T>,
@@ -173,9 +178,10 @@ export class ErrorResponse {
   }
 
   /**
-   * 501 Not Implemented â€” the server does not support the requested functionality.
+   * 501 Not Implemented -- the server does not support the requested functionality.
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 501 status.
    */
   async notImplemented<T extends object = any>(
     params: ResponseParams<T> = {} as ResponseParams<T>,
@@ -189,9 +195,10 @@ export class ErrorResponse {
   }
 
   /**
-   * 502 Bad Gateway â€” the upstream server returned an invalid response.
+   * 502 Bad Gateway -- the upstream server returned an invalid response.
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 502 status.
    */
   async badGateway<T extends object = any>(
     params: ResponseParams<T> = {} as ResponseParams<T>,
@@ -202,9 +209,10 @@ export class ErrorResponse {
   }
 
   /**
-   * 503 Service Unavailable â€” the server is temporarily unable to handle requests.
+   * 503 Service Unavailable -- the server is temporarily unable to handle requests.
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 503 status.
    */
   async serviceUnavailable<T extends object = any>(
     params: ResponseParams<T> = {} as ResponseParams<T>,
@@ -218,9 +226,10 @@ export class ErrorResponse {
   }
 
   /**
-   * 504 Gateway Timeout â€” the upstream server did not respond in time.
+   * 504 Gateway Timeout -- the upstream server did not respond in time.
    *
    * @param params - i18n keys or direct message, plus optional payload fields.
+   * @throws {HttpException} Always -- with HTTP 504 status.
    */
   async gatewayTimeout<T extends object = any>(
     params: ResponseParams<T> = {} as ResponseParams<T>,

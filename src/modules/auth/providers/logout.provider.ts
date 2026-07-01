@@ -1,13 +1,15 @@
+import { ModuleName } from '@/common/base/enums';
 import { ConfigService } from '@/config';
+import { ActivityLogService } from '@/modules/activity-log/activity-log.service';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { LogoutType } from '@/modules/auth/enums';
-import { UserPayload } from '@/modules/auth/interfaces';
-import { AuditLogProvider } from '@/modules/auth/providers/audit-log.provider';
+import { AuthAction } from '@/modules/auth/enums/auth-action.enum';
+import type { UserPayload } from '@/modules/auth/interfaces';
 import { CleanupRefreshTokenProvider } from '@/modules/auth/providers/cleanup-refresh-token.provider';
 import { CreateAuthHistoryProvider } from '@/modules/auth/providers/create-auth-history.provider';
 import { RevokeRefreshTokenProvider } from '@/modules/auth/providers/revoke-refresh-token.provider';
 import { UpdateRefreshTokenProvider } from '@/modules/auth/providers/update-refresh-token.provider';
 import { VerifyRefreshTokenProvider } from '@/modules/auth/providers/verify-refresh-token.provider';
-import { SecurityAuditEvent } from '@/modules/auth/entities/security-audit-log.entity';
 import { RedisService } from '@/shared/redis/redis.service';
 import { Injectable, Scope } from '@nestjs/common';
 import { LogoutQueryDto } from '../dtos';
@@ -38,14 +40,31 @@ export class LogoutProvider {
     private readonly createAuthHistory: CreateAuthHistoryProvider,
     private readonly redisService: RedisService,
     private readonly configService: ConfigService,
-    private readonly auditLog: AuditLogProvider,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
   /**
+   * Logs out the authenticated user from the current or all sessions.
+   *
+   * **Single-session logout** (`dto.type = 'current'`):
+   * 1. Reads the session's token pair from Redis and blacklists both tokens.
+   * 2. Revokes the corresponding refresh token row in the database.
+   * 3. Stamps `loggedOutAt` on the login-history row for this session.
+   *
+   * **All-sessions logout** (`dto.type = 'all'`):
+   * 1. Iterates every `auth:<userId>:*` key in Redis and blacklists all tokens.
+   * 2. Bulk-revokes all refresh token rows for the user in the database.
+   * 3. Stamps `loggedOutAt` on every open login-history row for the user.
+   *
+   * Either path ends with a cleanup pass to remove orphaned/expired tokens.
+   *
    * @param user            - The authenticated user's payload from the JWT.
-   * @param dto             - Query options (`from: 'current' | 'all'`).
-   * @param rawRefreshToken - Raw refresh JWT from the cookie (fallback when not in Redis).
+   * @param dto             - Query options; `type` is `'current'` or `'all'`.
+   * @param rawRefreshToken - Raw refresh JWT from the cookie, used as a fallback
+   *                          when the token is no longer in Redis.
+   * @returns Resolves when the logout is complete.
    */
+  @SystemLog(ModuleName.Auth)
   async execute(user: UserPayload, dto: LogoutQueryDto, rawRefreshToken?: string): Promise<void> {
     if (dto.type === LogoutType.All) {
       const allKeys = await this.redisService.keys(`auth:${user.id}:*`);
@@ -53,21 +72,21 @@ export class LogoutProvider {
         await this.blacklistAndDelete(key);
       }
       await this.revokeRefreshToken.execute({ userId: user.id }, { reason: 'signout-all' });
-      await this.createAuthHistory.logout(
-        { userId: user.id, sessionId: user.sessionId!, loggedOutAt: new Date() },
-        true,
-      );
+      await this.createAuthHistory.logout({ userId: user.id, loggedOutAt: new Date() });
     } else {
       const redisKey = `auth:${user.id}:${user.familyId}:${user.sessionId}`;
       const tokens = await this.blacklistAndDelete(redisKey);
       const tokenToRevoke = tokens?.refreshToken ?? rawRefreshToken;
       if (tokenToRevoke) {
-        const dbToken = await this.verifyRefreshToken.execute({ token: tokenToRevoke, userId: user.id });
+        const dbToken = await this.verifyRefreshToken.execute({
+          token: tokenToRevoke,
+          userId: user.id,
+        });
         if (dbToken) {
-          await this.updateRefreshToken.execute(
-            { id: dbToken.id },
-            { revokedAt: new Date(), revokedReason: 'signout' } as Partial<RefreshToken>,
-          );
+          await this.updateRefreshToken.execute({ id: dbToken.id }, {
+            revokedAt: new Date(),
+            revokedReason: 'signout',
+          } as Partial<RefreshToken>);
         }
       }
       await this.createAuthHistory.logout({
@@ -78,8 +97,8 @@ export class LogoutProvider {
     }
 
     await this.cleanupRefreshToken.execute({ userId: user.id });
-    this.auditLog.log({
-      event: dto.type === LogoutType.All ? SecurityAuditEvent.LogoutAll : SecurityAuditEvent.Logout,
+    this.activityLog.logUser({
+      action: dto.type === LogoutType.All ? AuthAction.LogoutAll : AuthAction.LogoutSuccess,
       userId: user.id,
     });
   }
@@ -92,7 +111,9 @@ export class LogoutProvider {
   private async blacklistAndDelete(
     redisKey: string,
   ): Promise<{ accessToken: string; refreshToken: string } | null> {
-    const tokens = await this.redisService.hgetall<{ accessToken: string; refreshToken: string }>(redisKey);
+    const tokens = await this.redisService.hgetall<{ accessToken: string; refreshToken: string }>(
+      redisKey,
+    );
     if (tokens) {
       await Promise.all([
         tokens.accessToken &&

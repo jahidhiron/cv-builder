@@ -25,11 +25,6 @@ import { TransformToArray } from './transform-to-array.decorator';
  * @param opts    - {@link ValidateSortByOptions} for Swagger description, example, and
  *                  a custom validation message.
  *
- * @example
- * ```ts
- * \@ValidateSortBy(SortByDto, ['name', 'createdAt'])
- * sortBy?: SortByDto[];
- * ```
  */
 export function ValidateSortBy<TModel extends new () => any>(
   model: TModel,

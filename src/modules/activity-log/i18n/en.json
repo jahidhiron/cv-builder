@@ -1,0 +1,13 @@
+{
+  "error": {
+    "activity-log-not-found": "Request log not found"
+  },
+  "success": {
+    "request-logs-list": "Request logs retrieved successfully",
+    "request-log-detail": "Request log detail retrieved successfully",
+    "user-activity-logs": "User activity logs retrieved successfully",
+    "system-activity-logs": "System activity logs retrieved successfully",
+    "user-activity-log-detail": "User activity log detail retrieved successfully",
+    "system-activity-log-detail": "System activity log detail retrieved successfully"
+  }
+}

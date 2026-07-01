@@ -22,6 +22,13 @@ import { DatabaseHealthService } from './database-health.service';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [NestConfigService, AppLogger],
+      /**
+       * Builds the TypeORM `DataSourceOptions` from the injected config services.
+       *
+       * @param nestConfigService - NestJS config service used to instantiate domain config wrappers
+       * @param logger - Application logger forwarded to the database config builder
+       * @returns TypeORM `DataSourceOptions` ready for connection pool initialisation
+       */
       useFactory: (nestConfigService: NestConfigService, logger: AppLogger) => {
         const appConfig = new AppConfigService(nestConfigService);
         const dbConfig = new DbConfigService(nestConfigService);

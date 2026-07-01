@@ -8,14 +8,6 @@ import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
  * and are embedded in JWTs at sign-in time, so they must be globally unique
  * and stable once assigned to roles.
  *
- * @example
- * ```json
- * {
- *   "name": "Create Role",
- *   "key": "roles:create",
- *   "description": "Allows creating a new role"
- * }
- * ```
  */
 export class CreatePermissionDto {
   /** Human-readable label for the permission (max 100 characters). */
@@ -30,7 +22,6 @@ export class CreatePermissionDto {
    * Embedded in JWTs at sign-in time and evaluated by `PermissionsGuard`
    * on every guarded request without a database round-trip.
    *
-   * @example 'roles:create'
    */
   @ApiProperty({ example: 'roles:create' })
   @IsString()

@@ -4,16 +4,21 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * Creates the users table and all authentication-related tables.
  *
  * Tables created:
- *  - `users`                — core user accounts; FK to `roles`
- *  - `verification_tokens`  — email-verification and password-reset one-time tokens
- *  - `refresh_tokens`       — refresh-token family tracking for token rotation
- *  - `login_histories`      — per-session device and location audit trail
- *  - `password_histories`   — previous password hashes for reuse prevention
- *  - `security_audit_logs`  — append-only log for security events (signin, lockout, etc.)
+ *  - `users`               — core user accounts; FK to `roles`
+ *  - `verification_tokens` — email-verification and password-reset one-time tokens
+ *  - `refresh_tokens`      — refresh-token family tracking for token rotation
+ *  - `login_histories`     — per-session device and location audit trail
+ *  - `password_histories`  — previous password hashes for reuse prevention
  */
 export class CreateUsersAndAuthSchema1749600000002 implements MigrationInterface {
   name = 'CreateUsersAndAuthSchema1749600000002';
 
+  /**
+   * Applies the migration: creates the users table and all authentication-related tables.
+   *
+   * @param queryRunner - TypeORM query runner used to execute SQL statements
+   * @returns Promise that resolves when all statements have executed
+   */
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Users
     await queryRunner.query(`
@@ -147,33 +152,15 @@ export class CreateUsersAndAuthSchema1749600000002 implements MigrationInterface
         ON "password_histories"("user_id", "created_at" DESC)
     `);
 
-    // Security audit logs
-    await queryRunner.query(`
-      CREATE TABLE "security_audit_logs" (
-        "id"         BIGSERIAL     PRIMARY KEY,
-        "user_id"    BIGINT,
-        "event"      VARCHAR(64)   NOT NULL,
-        "ip"         VARCHAR(64),
-        "user_agent" VARCHAR(512),
-        "metadata"   JSONB,
-        "created_at" TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    await queryRunner.query(`
-      CREATE INDEX "idx_security_audit_logs_user_id"
-        ON "security_audit_logs"("user_id")
-      WHERE "user_id" IS NOT NULL
-    `);
-
-    await queryRunner.query(`
-      CREATE INDEX "idx_security_audit_logs_event_created_at"
-        ON "security_audit_logs"("event", "created_at" DESC)
-    `);
   }
 
+  /**
+   * Reverts the migration: drops all auth-related tables and the users table in dependency order.
+   *
+   * @param queryRunner - TypeORM query runner used to execute SQL statements
+   * @returns Promise that resolves when all statements have executed
+   */
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE "security_audit_logs"`);
     await queryRunner.query(`DROP TABLE "password_histories"`);
     await queryRunner.query(`DROP TABLE "login_histories"`);
     await queryRunner.query(`DROP TABLE "refresh_tokens"`);

@@ -1,6 +1,6 @@
 import { ConfigModule } from '@/config';
 import { Module } from '@nestjs/common';
-import { MAIL_PROVIDER } from './mail.constant';
+import { MAIL_PROVIDER } from './constants';
 import { MailService } from './mail.service';
 import { MailgunModule } from './providers/mailgun/mailgun.module';
 import { MailgunService } from './providers/mailgun/mailgun.service';

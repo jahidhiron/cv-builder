@@ -1,3 +1,5 @@
+import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { ServerErrorStatus } from '@/modules/error-tracking/enums/server-error-status.enum';
 import { ServerErrorRepository } from '@/modules/error-tracking/repositories/server-error.repository';
 import { Injectable } from '@nestjs/common';
@@ -15,8 +17,20 @@ import type { UpsertErrorParams } from './interfaces/upsert-error.interface';
  */
 @Injectable()
 export class UpsertServerErrorProvider {
-  constructor(private readonly repo: ServerErrorRepository) {}
+  /**
+   * @param repo - Repository used to run the raw upsert query.
+   */
+  constructor(
+    private readonly repo: ServerErrorRepository,
+  ) {}
 
+  /**
+   * Upserts a server-error record by fingerprint.
+   *
+   * @param params - Error details and the occurrence timestamp.
+   * @returns The post-upsert `occurrenceCount`; `1` indicates a brand-new fingerprint.
+   */
+  @SystemLog(ModuleName.ErrorTracking)
   async execute(params: UpsertErrorParams): Promise<number> {
     const rows = await this.repo.rawQuery<{ occurrence_count: number }>(
       `INSERT INTO server_errors

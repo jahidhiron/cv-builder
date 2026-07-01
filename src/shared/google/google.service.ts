@@ -15,6 +15,10 @@ import { GooglePayload } from './interfaces';
  */
 @Injectable({ scope: Scope.REQUEST })
 export class GoogleService {
+  /**
+   * @param configService - Application config service, used to resolve the Google OAuth client ID.
+   * @param errorResponse - Utility for throwing standardised error responses.
+   */
   constructor(
     private readonly configService: ConfigService,
     private readonly errorResponse: ErrorResponse,
@@ -23,7 +27,7 @@ export class GoogleService {
   /**
    * Verify a Google id token and return the normalised user payload.
    *
-   * @param params.idToken - The raw id token string received from the client.
+   * @param idToken - The raw id token string received from the client.
    * @returns Verified Google user payload.
    * @throws {UnauthorizedException} When the token is invalid, expired, or missing required claims.
    */

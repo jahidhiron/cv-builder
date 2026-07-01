@@ -1,9 +1,9 @@
-import { setupSecurity, setupSwaggerAuth } from '@/common/middlewares';
+import { requestContextMiddleware, setupSecurity, setupSwaggerAuth } from '@/common/middlewares';
 import { DeserializeQuery, validationPipe } from '@/common/pipes';
 import { SWAGGER_PATH } from '@/common/swagger/constants';
 import { ConfigService } from '@/config';
 import { API_PREFIX, API_VERSION_NUMBER } from '@/config/app/app.constant';
-import { AppLogger, createWinstonLoggerConfig } from '@/config/logger';
+import { AppLogger, LoggerContext, createWinstonLoggerConfig } from '@/config/logger';
 import { setupRabbitmq } from '@/config/rabbitmq';
 import { setupSwagger } from '@/config/swagger';
 import { AppModule } from '@/modules/app/app.module';
@@ -45,6 +45,10 @@ export async function bootstrap(): Promise<{ app: NestExpressApplication; logger
   app.use(json({ limit: '100kb' }));
   app.use(urlencoded({ extended: true, limit: '100kb' }));
 
+  // Open the AsyncLocalStorage scope for the rest of the request lifecycle.
+  // MUST run before any provider/decorator that reads `ActivityLogContext`.
+  app.use(requestContextMiddleware);
+
   const configService = app.get(ConfigService);
   const appConfig = configService.app;
 
@@ -52,6 +56,7 @@ export async function bootstrap(): Promise<{ app: NestExpressApplication; logger
     winston.createLogger(createWinstonLoggerConfig(appConfig)),
     appConfig,
   );
+  LoggerContext.register(logger);
   app.useLogger(logger);
 
   app.use(cookieParser());
@@ -65,6 +70,10 @@ export async function bootstrap(): Promise<{ app: NestExpressApplication; logger
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: API_VERSION_NUMBER });
 
   app.useGlobalPipes(new DeserializeQuery(), validationPipe());
+
+  // RequestLogInterceptor is registered as APP_INTERCEPTOR inside
+  // ActivityLogModule so Nest's standard container resolves its constructor
+  // dependencies (`LogRequestProvider`, `AppLogger`).
 
   app.enableShutdownHooks();
   setupSwagger(app, appConfig);

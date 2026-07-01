@@ -24,7 +24,6 @@ const baseOptions: DataSourceOptions = {
   entities: [__dirname + '/../../../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/../migrations/*.{ts,js}'],
   namingStrategy: new NamingStrategy(),
-  // CLI never auto-syncs or auto-runs migrations; the explicit commands do that.
   synchronize: false,
   migrationsRun: false,
   logging: ['error', 'warn', 'migration'],

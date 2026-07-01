@@ -1,3 +1,5 @@
+import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import type { FindOptionsWhere, ObjectLiteral } from 'typeorm';
 import { BaseProvider } from './base.provider';
 
@@ -36,6 +38,7 @@ export abstract class BaseDeleteProvider<T extends ObjectLiteral> extends BasePr
    * @param userId - ID of the authenticated user (recorded as `deletedBy` on soft delete).
    * @param force  - When `true`, permanently removes the row; otherwise soft-deletes it.
    */
+  @SystemLog(ModuleName.Common)
   override async execute(where: FindOptionsWhere<T>, userId: number, force = false): Promise<void> {
     const entity = await this.findOne(where);
     await this.beforeDelete(entity);

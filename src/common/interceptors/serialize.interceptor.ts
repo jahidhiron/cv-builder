@@ -21,11 +21,18 @@ export function Serialize(dto: Type<unknown>) {
  * Applied via the {@link Serialize} decorator rather than instantiated directly.
  */
 export class SerializeInterceptor implements NestInterceptor {
+  /**
+   * @param dto - DTO class used by `class-transformer` to strip unlisted fields.
+   */
   constructor(private readonly dto: Type<unknown>) {}
 
   /**
    * Intercepts the handler response and serialises `response.data` through the DTO class.
    * Responses that do not carry a `data` object are passed through unchanged.
+   *
+   * @param _context - The current execution context (unused).
+   * @param handler - The next handler in the interceptor chain.
+   * @returns An `Observable` emitting the response with `data` serialised through the DTO.
    */
   intercept(_context: ExecutionContext, handler: CallHandler): Observable<StandardResponse> {
     return handler.handle().pipe(

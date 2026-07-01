@@ -18,6 +18,8 @@ How the CV Builder API handles identity, sessions, and access control.
   - [Change Password](#change-password)
 - [JWT Strategy](#jwt-strategy)
 - [Sessions](#sessions)
+  - [Remember Me](#remember-me)
+  - [New Device Notification](#new-device-notification)
 - [Route Access Control](#route-access-control)
   - [Public Routes (@Auth(AuthType.None))](#public-routes-authauthtypenone)
   - [Protected Routes (default)](#protected-routes-default)
@@ -225,6 +227,17 @@ DELETE /v1/auth/sessions/:id    # Revoke a specific session
 
 `JWT_MAX_SESSION_DAYS` controls how old a session can be before it is automatically cleaned up by the cron job.
 
+### Remember Me
+
+Signin accepts an optional `rememberMe: boolean` flag (`POST /v1/auth/signin`). When `true`:
+
+- The refresh token is issued with `JWT_REMEMBER_ME_EXPIRES_IN_SECONDS` lifetime instead of the default `JWT_REFRESH_EXPIRES_IN_SECONDS` (e.g. 30 days vs. 90 days).
+- The session's absolute age cap is `JWT_REMEMBER_ME_MAX_SESSION_DAYS` instead of `JWT_MAX_SESSION_DAYS`.
+
+### New Device Notification
+
+On every signin, `NewDeviceNotificationProvider` checks whether the current device fingerprint (`familyId`, derived from IP + User-Agent) has a `login_histories` row within the last `KNOWN_DEVICE_WINDOW_DAYS` days. If not, it emails the user a "new device sign-in" alert. This runs as a fire-and-forget system-logged operation (`@SystemLog`) and never blocks the signin response.
+
 ---
 
 ## Route Access Control
@@ -332,9 +345,11 @@ All discovered keys are upserted into the `permissions` table and assigned to th
 | **Password history** | Prevents reusing the last N passwords on reset/change |
 | **HIBP check** | Optional `HIBP_CHECK_ENABLED=true` — rejects passwords found in data breaches |
 | **Token rotation** | Refresh tokens are single-use; each refresh issues a new one and revokes the old |
-| **Session limit** | `JWT_MAX_SESSION_DAYS` caps session age; cron job prunes expired tokens |
+| **Session limit** | `JWT_MAX_SESSION_DAYS` (or `JWT_REMEMBER_ME_MAX_SESSION_DAYS`) caps session age; cron job prunes expired tokens |
+| **Remember me** | Optional extended refresh-token lifetime + session cap, opted into per signin |
+| **New device alerts** | Emails the user when a signin comes from an unrecognised device fingerprint |
 | **Rate limiting** | Redis fixed-window rate limiting via `RateLimitGuard` |
 | **CORS allowlist** | Only known origins receive CORS headers (returns 200 with no CORS headers for unknown origins — not 403) |
 | **Helmet** | Strict HTTP security headers (HSTS in production, X-Frame-Options, etc.) |
-| **Audit log** | All auth events recorded in `security_audit_logs` with IP, device, action, and timestamp |
+| **Activity logging** | Auth actions recorded as user/system activity logs (see the `activity-log` module) with IP, device, and timestamp |
 | **HttpOnly cookies** | Auth tokens stored in HttpOnly cookies to prevent XSS token theft |

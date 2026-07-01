@@ -14,6 +14,12 @@ import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
  */
 @Injectable()
 export class ParseIdPipe implements PipeTransform<string, number> {
+  /**
+   * @param value - Raw route-param string to parse.
+   * @returns The parsed positive integer ID.
+   * @throws {BadRequestException} When `value` is not an integer, is less than 1, or
+   *   exceeds `Number.MAX_SAFE_INTEGER`.
+   */
   transform(value: string): number {
     const id = Number(value);
     if (!Number.isInteger(id) || id < 1 || id > Number.MAX_SAFE_INTEGER) {

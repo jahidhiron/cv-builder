@@ -12,15 +12,31 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { HealthService } from './health.service';
 
+/**
+ * Controller exposing infrastructure health-check endpoints.
+ *
+ * All routes are publicly accessible (no authentication required).
+ *
+ * @module Health
+ */
 @Auth(AuthType.None)
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
+  /**
+   * @param healthService - Service performing the underlying health checks.
+   * @param successResponse - Utility for building standardised success responses.
+   */
   constructor(
     private readonly healthService: HealthService,
     private readonly successResponse: SuccessResponse,
   ) {}
 
+  /**
+   * Checks connectivity and responsiveness of the primary database.
+   *
+   * @returns A standardised success response containing the database health status.
+   */
   @Get('database')
   @DbHealthSwaggerDocs()
   async dbHealth() {
@@ -32,6 +48,12 @@ export class HealthController {
     });
   }
 
+  /**
+   * Returns statistics for a specific message queue.
+   *
+   * @param query - Query parameters identifying the queue and optional filters.
+   * @returns A standardised success response containing queue statistics.
+   */
   @Get('queue-stats')
   @QueueStatsSwaggerDocs()
   async getQueueStats(@Query() query: QueueStatsQueryDto) {
@@ -39,6 +61,11 @@ export class HealthController {
     return this.successResponse.ok({ module: ModuleName.Health, key: 'queue-stats', ...result });
   }
 
+  /**
+   * Returns a list of all registered message queues and their current state.
+   *
+   * @returns A standardised success response containing the queue list.
+   */
   @Get('queues')
   @QueueListSwaggerDocs()
   async queueList() {

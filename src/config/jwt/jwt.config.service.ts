@@ -10,6 +10,9 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class JwtConfigService {
+  /**
+   * @param configService - NestJS config service used to read the `jwt.*` namespace.
+   */
   constructor(private readonly configService: ConfigService) {}
 
   /** HMAC secret for signing access tokens (`JWT_ACCESS_SECRET`). */

@@ -1,4 +1,6 @@
-import { PASSWORD_HISTORY_LIMIT } from '@/modules/auth/constants/auth.constant';
+import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
+import { PASSWORD_HISTORY_LIMIT } from '@/modules/auth/constants';
 import type { SavePasswordHistoryParams } from '@/modules/auth/providers/interfaces';
 import { PasswordHistoryRepository } from '@/modules/auth/repositories/password-history.repository';
 import { Injectable } from '@nestjs/common';
@@ -12,17 +14,25 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class SavePasswordHistoryProvider {
-  constructor(private readonly passwordHistoryRepo: PasswordHistoryRepository) {}
+  constructor(
+    private readonly passwordHistoryRepo: PasswordHistoryRepository,
+  ) {}
 
   /**
-   * Inserts the new hash and removes the oldest entries beyond the history limit.
+   * Inserts the new hash and removes oldest entries beyond the history limit.
    *
-   * Both queries run independently — insertion first, then pruning — so the new
-   * entry is always counted before the oldest row is removed.
+   * Execution order:
+   * 1. **Insert** — persists `passwordHash` for `userId` with the current timestamp.
+   * 2. **Prune** — deletes any entries for `userId` outside the most recent
+   *    {@link PASSWORD_HISTORY_LIMIT} records, ordered by `created_at DESC`.
    *
-   * @param params.userId       - ID of the user whose history is being updated.
-   * @param params.passwordHash - bcrypt/scrypt hash of the new password to record.
+   * Both steps run sequentially so the new entry is always counted before
+   * the oldest row is removed.
+   *
+   * @param params - History entry to record; see {@link SavePasswordHistoryParams}.
+   * @returns Resolves with `void` after both the insert and prune complete.
    */
+  @SystemLog(ModuleName.Auth)
   async execute({ userId, passwordHash }: SavePasswordHistoryParams): Promise<void> {
     await this.passwordHistoryRepo.rawQuery(
       `INSERT INTO password_histories (user_id, password_hash, created_at)

@@ -28,6 +28,11 @@ export class PurgeExpiredTokensProvider {
     private readonly logger: AppLogger,
   ) {}
 
+  /**
+   * Deletes all revoked and expired refresh tokens in a single bulk query.
+   *
+   * @returns Promise that resolves when the purge query has completed
+   */
   async execute(): Promise<void> {
     const deleted: { id: string }[] = await this.repo.query(
       `DELETE FROM refresh_tokens

@@ -25,11 +25,26 @@ import type { AppResponse } from '../interfaces';
  */
 @Injectable()
 export class ResponseStatusInterceptor implements NestInterceptor {
+  /**
+   * Wrap `res.json` to override the HTTP status code from the response body.
+   *
+   * **Steps:**
+   * 1. **Context check** — pass through non-HTTP contexts unchanged.
+   * 2. **Wrap json** — replace `res.json` with a thin wrapper that reads
+   *    `body.statusCode` and calls `res.status()` before delegating to the
+   *    original serialiser.
+   * 3. **Delegate** — invoke the next handler; the wrapper fires when NestJS
+   *    flushes the response.
+   *
+   * @param context - NestJS execution context providing access to the HTTP response.
+   * @param next    - Call handler whose observable triggers response serialisation.
+   * @returns Observable that emits the handler's return value unchanged.
+   */
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     if (context.getType() !== 'http') return next.handle();
 
     const res = context.switchToHttp().getResponse<Response>();
-    const originalJson = res.json.bind(res);
+    const originalJson = res.json.bind(res) as (body?: unknown) => Response;
 
     res.json = function (body: unknown): Response {
       if (body !== null && typeof body === 'object' && 'statusCode' in body) {

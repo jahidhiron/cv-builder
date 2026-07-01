@@ -2,7 +2,6 @@ export * from './save-password-history.provider';
 export * from './apply-token.provider';
 export * from './find-one-token.provider';
 export * from './invalidate-previous-token.provider';
-export * from './audit-log.provider';
 export * from './change-password.provider';
 export * from './check-password-history.provider';
 export * from './cleanup-refresh-token.provider';

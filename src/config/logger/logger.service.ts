@@ -12,6 +12,10 @@ import { Logger as WinstonLogger } from 'winston';
  */
 @Injectable()
 export class AppLogger implements LoggerService {
+  /**
+   * @param logger - Underlying Winston logger instance injected via `WINSTON_MODULE_PROVIDER`.
+   * @param appConfig - Resolved app config service (used to detect `isProd`).
+   */
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: WinstonLogger,
     private readonly appConfig: AppConfigService,

@@ -1,34 +1,40 @@
+import { ModuleName } from '@/common/base/enums';
 import { AppLogger } from '@/config/logger';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import {
   DbHealthStatusDto,
   DbHealthStatusResponseDto,
   PostgresConnectionStatsDto,
 } from '@/modules/healths/dtos';
-import { ErrorResponse } from '@/shared/response';
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 /**
- * @description Provides a lightweight PostgreSQL health snapshot (latency + connections).
- * @category Providers
+ * Provides a lightweight PostgreSQL health snapshot covering latency and connection counts.
+ *
+ * @module Health
  */
 @Injectable()
 export class DbHealthStatusProvider {
   /**
-   * @param dataSource - Active TypeORM DataSource for running diagnostic queries.
-   * @param logger - AppLogger used to capture query failures.
-   * @param errorResponse - Service to handle errors.
+   * @param dataSource - Active TypeORM DataSource used to run diagnostic queries.
+   * @param logger - Application logger used to capture query failures.
    */
   constructor(
     private readonly dataSource: DataSource,
     private readonly logger: AppLogger,
-    private readonly errorResponse: ErrorResponse,
   ) {}
 
   /**
-   * @description Returns a compact DB health snapshot for liveness/readiness checks.
-   * @returns The current database health status.
+   * Executes a liveness probe against the database and returns a compact health snapshot.
+   *
+   * Runs `SELECT 1` to measure latency, then queries `pg_stat_activity` and
+   * `max_connections` for connection pool metrics. If the probe fails, the snapshot
+   * reflects a `DOWN` state with the error message attached.
+   *
+   * @returns A {@link DbHealthStatusResponseDto} containing status, latency, and connection stats.
    */
+  @SystemLog(ModuleName.Health)
   async execute(): Promise<DbHealthStatusResponseDto> {
     const result: DbHealthStatusDto = {
       service: 'UP',
@@ -57,6 +63,11 @@ export class DbHealthStatusProvider {
     return { dbHealthStatus: result };
   }
 
+  /**
+   * Queries PostgreSQL system views for current and maximum connection counts.
+   *
+   * @returns A {@link PostgresConnectionStatsDto} on success, or `null` if the query fails.
+   */
   private async getPostgresConnectionStats(): Promise<PostgresConnectionStatsDto | null> {
     try {
       const currentConnections = await this.dataSource.query<{ count: string }[]>(

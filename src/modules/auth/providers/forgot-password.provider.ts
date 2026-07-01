@@ -1,9 +1,13 @@
+import { ModuleName } from '@/common/base/enums';
 import { ConfigService } from '@/config';
+import { ActivityLogService } from '@/modules/activity-log/activity-log.service';
+import { SystemLog } from '@/modules/activity-log/decorators';
+import { AuthAction } from '@/modules/auth/enums/auth-action.enum';
 import { TokenType } from '@/modules/auth/enums';
 import { TokenPayload } from '@/modules/auth/interfaces';
 import { CreateTokenProvider } from '@/modules/auth/providers/create-token.provider';
 import { UserService } from '@/modules/users/user.service';
-import { SendEmailParams } from '@/shared/mail/interfaces';
+import { buildForgotPasswordEmail } from '@/modules/auth/mail';
 import { MailService } from '@/shared/mail/mail.service';
 import { Injectable, Scope } from '@nestjs/common';
 import { ForgotPasswordDto } from '../dtos';
@@ -24,32 +28,44 @@ export class ForgotPasswordProvider {
     private readonly createToken: CreateTokenProvider,
     private readonly configService: ConfigService,
     private readonly emailService: MailService,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
+  /**
+   * Initiates the password-reset flow for the given email address.
+   *
+   * Steps:
+   * 1. **User lookup** — resolves the user by email with `throwError: false`.
+   * 2. **Eligibility guard** — silently returns 200 if the user does not exist,
+   *    is deleted, inactive, or unverified, to prevent email enumeration.
+   * 3. **Token creation** — generates a new one-time `ForgotPassword` token.
+   * 4. **Email dispatch** — sends the password-reset link to the user's email address.
+   *
+   * @param dto - Contains the `email` to send the reset link to.
+   * @returns Resolves when the email has been dispatched (or silently when ineligible).
+   */
+  @SystemLog(ModuleName.Auth)
   async execute(dto: ForgotPasswordDto): Promise<void> {
     const { user } = await this.userService.findOne({ email: dto.email }, { throwError: false });
 
-    // Silently succeed for any ineligible state to prevent email enumeration.
-    // The client always receives a 200 regardless of whether an email was sent.
+    // Silent 200 for all ineligible states — callers cannot distinguish "not found"
+    // from "deleted" or "unverified", preventing email enumeration.
     if (!user || user.isDeleted || !user.isActive || !user.emailVerified) return;
 
     const tokenPayload: TokenPayload = { type: TokenType.ForgotPassword, user };
     const tokenData = await this.createToken.execute(tokenPayload);
 
-    const { app, mail } = this.configService;
-    const resetUrl = `${app.clientBaseUrl}/auth/reset-password?email=${user.email}&token=${tokenData.token}`;
-    const emailParams: SendEmailParams = {
-      module: 'auth' as never,
-      template: 'forgot-password',
-      to: user.email,
-      subject: `Action required: Reset Your ${app.companyName} Account Password`,
-      context: {
-        name: user.name,
-        resetUrl,
-        logoUrl: mail.logoUrl,
-        supportEmail: mail.supportEmail,
-      },
-    };
-    await this.emailService.sendEmail(emailParams);
+    await this.emailService.sendEmail(
+      buildForgotPasswordEmail(
+        { ...user, token: tokenData.token },
+        { clientBaseUrl: this.configService.app.clientBaseUrl, companyName: this.configService.app.companyName },
+      ),
+    );
+
+    this.activityLog.logUser({
+      action: AuthAction.ForgotPasswordSuccess,
+      userId: user.id,
+      metadata: { email: user.email },
+    });
   }
 }

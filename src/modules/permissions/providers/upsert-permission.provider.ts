@@ -1,40 +1,70 @@
-import { BaseProvider } from '@/common/base/providers/base.provider';
 import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { Permission } from '@/modules/permissions/entities/permission.entity';
-import type { FindOrCreatePermissionResult } from '@/modules/permissions/providers/interfaces';
 import { PermissionRepository } from '@/modules/permissions/repositories/permission.repository';
-import { ErrorResponse } from '@/shared/response';
 import { Injectable } from '@nestjs/common';
 import type { DeepPartial } from 'typeorm';
+import { In } from 'typeorm';
 
 /**
- * Finds a permission by key or creates it when absent.
+ * Batch-upserts permissions for the admin permission sync flow.
  *
- * Designed for sync flows (e.g. admin permission sync) that supply the
- * acting user explicitly rather than reading from the HTTP request context.
+ * @module Permission
  */
 @Injectable()
-export class UpsertPermissionProvider extends BaseProvider<Permission> {
-  constructor(repo: PermissionRepository, errorResponse: ErrorResponse) {
-    super(ModuleName.Permission, repo, errorResponse);
-  }
+export class UpsertPermissionProvider {
+  constructor(private readonly repo: PermissionRepository) {}
 
-  override async execute(
-    key: string,
-    name: string,
-    adminUserId: number,
-  ): Promise<FindOrCreatePermissionResult> {
-    const existing = await this.repo.findOne({ key });
-    if (existing) return { permission: existing, created: false };
+  /**
+   * Finds all existing permissions whose keys are in `items`, then batch-creates
+   * the ones that are absent. Returns the IDs of every permission (existing and
+   * newly created) together with a count of how many rows were inserted.
+   *
+   * Two DB calls total regardless of how many items are provided:
+   * 1. `SELECT … WHERE key IN (…)` — fetch already-existing rows.
+   * 2. Bulk `INSERT` — create only the missing ones.
+   *
+   * @param items       - Permission keys and display names to upsert.
+   * @param adminUserId - ID stamped on `createdBy` / `updatedBy` for new rows.
+   * @returns `permissionIds` — IDs of all permissions (existing + new);
+   *          `created` — number of rows inserted in this call.
+   */
+  @SystemLog(ModuleName.Permission)
+  async execute({
+    items,
+    adminUserId,
+  }: {
+    items: { key: string; name: string }[];
+    adminUserId: number;
+  }): Promise<{ permissionIds: number[]; created: number }> {
+    if (!items.length) return { permissionIds: [], created: 0 };
 
-    const permission = await this.repo.create({
-      key,
-      name,
-      description: 'Auto-synced from route metadata',
-      createdBy: adminUserId,
-      updatedBy: adminUserId,
-    } as DeepPartial<Permission>);
+    const keys = items.map((i) => i.key);
+    const existing = await this.repo.findMany({ key: In(keys) });
+    const existingByKey = new Map(existing.map((p) => [p.key, p]));
 
-    return { permission, created: true };
+    const toCreate = items.filter((i) => !existingByKey.has(i.key));
+    const newPermissions = toCreate.length
+      ? await this.repo.createMany(
+          toCreate.map(
+            ({ key, name }) =>
+              ({
+                key,
+                name,
+                description: 'Auto-synced from route metadata',
+                createdBy: adminUserId,
+                updatedBy: adminUserId,
+              }) as DeepPartial<Permission>,
+          ),
+        )
+      : [];
+
+    return {
+      permissionIds: [
+        ...existing.map((p) => Number(p.id)),
+        ...newPermissions.map((p) => Number(p.id)),
+      ],
+      created: newPermissions.length,
+    };
   }
 }

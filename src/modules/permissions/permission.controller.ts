@@ -31,27 +31,31 @@ import { PermissionService } from './permission.service';
 /**
  * REST controller for the permissions resource (`/permissions`).
  *
- * Handles HTTP routing and response serialisation for all permission CRUD operations.
- * Each action delegates business logic to {@link PermissionService} and wraps the result
- * in a standardised success envelope via {@link SuccessResponse}.
+ * Delegates all business logic to {@link PermissionService} and wraps results
+ * in a standardised success envelope. All endpoints require a valid Bearer JWT;
+ * fine-grained access is enforced by `PermissionsGuard` using keys embedded in the token.
  *
- * All endpoints require a valid Bearer JWT. Fine-grained access control is enforced by
- * `PermissionsGuard` using the permission keys embedded in the token at sign-in.
+ * @module Permission
  */
 @ApiTags('Permissions')
 @ApiBearerAuth()
 @Controller(ModuleName.Permission)
 export class PermissionController {
+  /**
+   * @param permissionService - Service delegating all permission domain operations.
+   * @param successResponse - Utility for building standardised success responses.
+   */
   constructor(
     private readonly permissionService: PermissionService,
     private readonly successResponse: SuccessResponse,
   ) {}
 
   /**
-   * Create a new permission.
+   * Creates a new permission.
    *
-   * @param dto - Validated request body with `name`, `key`, and optional `description`.
-   * @returns 201 Created with the newly created permission in the standard envelope.
+   * @param dto - Validated creation payload containing `name`, `key`, and optional `description`.
+   * @returns A 201 success response containing the created permission.
+   * @throws {ConflictException} When the `key` is already in use.
    */
   @Post()
   @CreatePermissionSwaggerDocs()
@@ -65,10 +69,10 @@ export class PermissionController {
   }
 
   /**
-   * List permissions with optional search and pagination.
+   * Returns a paginated list of permissions.
    *
-   * @param query - Pagination, search, and sort parameters.
-   * @returns 200 OK with a paginated array of permissions and metadata.
+   * @param query - Query DTO containing pagination, sorting, and optional search term.
+   * @returns A 200 success response containing the paginated permission list.
    */
   @Get()
   @ListPermissionsSwaggerDocs()
@@ -82,10 +86,11 @@ export class PermissionController {
   }
 
   /**
-   * Retrieve a single permission by its numeric ID.
+   * Returns a single permission by ID.
    *
-   * @param id - The permission's primary key, parsed from the URL path.
-   * @returns 200 OK with the matching permission, or 404 if it does not exist.
+   * @param id - Permission ID parsed and validated by {@link ParseIdPipe}.
+   * @returns A 200 success response containing the permission.
+   * @throws {NotFoundException} When no permission with the given ID exists.
    */
   @Get(':id')
   @FindOnePermissionSwaggerDocs()
@@ -99,11 +104,14 @@ export class PermissionController {
   }
 
   /**
-   * Partially update a permission by ID.
+   * Updates an existing permission.
    *
-   * @param id - The permission's primary key, parsed from the URL path.
-   * @param dto - Fields to update (all optional). `key` must remain globally unique.
-   * @returns 200 OK with the updated permission, or 404/409 on validation failures.
+   * @param id - Permission ID parsed and validated by {@link ParseIdPipe}.
+   * @param dto - Validated update payload; `key` must remain globally unique.
+   * @returns A 200 success response containing the updated permission.
+   * @throws {NotFoundException} When no permission with the given ID exists.
+   * @throws {ConflictException} When the new `key` conflicts with another permission.
+   * @throws {ForbiddenException} When the permission is system-reserved.
    */
   @Patch(':id')
   @UpdatePermissionSwaggerDocs()
@@ -117,11 +125,13 @@ export class PermissionController {
   }
 
   /**
-   * Hard-delete a permission by ID.
+   * Permanently deletes a permission by ID.
    *
-   * @param id - The permission's primary key, parsed from the URL path.
-   * @param user - The currently authenticated user injected by `CurrentUser`.
-   * @returns 200 OK on success, 404 if not found, or 403 for system-protected keys.
+   * @param id - Permission ID parsed and validated by {@link ParseIdPipe}.
+   * @param user - Authenticated user initiating the delete.
+   * @returns A 200 success response.
+   * @throws {NotFoundException} When no permission with the given ID exists.
+   * @throws {ForbiddenException} When the permission key is system-reserved.
    */
   @Delete(':id')
   @DeletePermissionSwaggerDocs()

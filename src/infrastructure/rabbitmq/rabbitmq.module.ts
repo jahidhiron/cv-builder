@@ -18,10 +18,11 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
  */
 @Module({})
 export class RabbitMqModule {
-  // The module graph is decided statically at bootstrap (before DI), so the
-  // flag must be read from the environment here. The single source of truth is
-  // `isRabbitmqEnabled()`, which `rabbitmqConfig()` also uses to populate
-  // `ConfigService` so both paths stay in lockstep.
+  /**
+   * Builds the dynamic module, wiring RabbitMQ clients only when the broker is enabled.
+   *
+   * @returns A configured {@link DynamicModule}; an empty shell when RabbitMQ is disabled
+   */
   static register(): DynamicModule {
     if (!isRabbitmqEnabled()) {
       return { module: RabbitMqModule };

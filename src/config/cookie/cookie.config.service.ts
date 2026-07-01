@@ -10,6 +10,9 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class CookieConfigService {
+  /**
+   * @param configService - NestJS config service used to read the `cookie.*` namespace.
+   */
   constructor(private readonly configService: ConfigService) {}
 
   /** Optional `Domain` attribute — omit to scope to the current hostname. */

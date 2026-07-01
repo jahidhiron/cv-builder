@@ -18,6 +18,12 @@ loadEnv(); // fall back to .env
 
 const logger = createScriptLogger('CreateDatabase');
 
+/**
+ * Connects to the PostgreSQL maintenance database and creates the app database if absent.
+ *
+ * @returns Promise that resolves when the database exists or has been created
+ * @throws If the  statement fails or the maintenance connection cannot be established
+ */
 async function createDatabase(): Promise<void> {
   const { config, dbName } = buildClientConfig();
   const client = new Client(config);
@@ -31,8 +37,7 @@ async function createDatabase(): Promise<void> {
     );
 
     if (!result.rowCount) {
-      // Identifiers cannot be parameterised in PostgreSQL DDL.
-      // dbName is sourced from a trusted env variable, not user input.
+      // Identifiers cannot be parameterised in DDL; dbName comes from a trusted env variable.
       try {
         await client.query(`CREATE DATABASE "${dbName}"`);
         logger.info(`Database "${dbName}" created.`);

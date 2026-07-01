@@ -5,6 +5,7 @@ import { HttpClientModule } from '@/shared/http-client';
 import { HibpService } from '@/shared/hibp/hibp.service';
 import { Global, Module } from '@nestjs/common';
 import { HashModule } from './hash/hash.module';
+import { JwtModule } from './jwt/jwt.module';
 import { MailModule } from './mail/mail.module';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { RedisModule } from './redis/redis.module';
@@ -28,8 +29,8 @@ import { ResponseModule } from './response';
  */
 @Global()
 @Module({
-  imports: [ConfigModule, MailModule, ResponseModule, HttpClientModule, HashModule, RedisModule, CookieModule, RateLimitModule, GoogleModule],
+  imports: [ConfigModule, MailModule, ResponseModule, HttpClientModule, HashModule, RedisModule, CookieModule, RateLimitModule, GoogleModule, JwtModule],
   providers: [HibpService],
-  exports: [ResponseModule, HttpClientModule, HashModule, RedisModule, MailModule, CookieModule, RateLimitModule, GoogleModule, HibpService],
+  exports: [ResponseModule, HttpClientModule, HashModule, RedisModule, MailModule, CookieModule, RateLimitModule, GoogleModule, JwtModule, HibpService],
 })
 export class SharedModule {}

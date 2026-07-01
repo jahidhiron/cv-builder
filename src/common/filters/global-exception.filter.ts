@@ -1,5 +1,6 @@
 import { ConfigService } from '@/config';
 import { AppLogger } from '@/config/logger';
+import { ActivityLogContext } from '@/modules/activity-log/context';
 import { ErrorTrackingService } from '@/modules/error-tracking/error-tracking.service';
 import {
   ArgumentsHost,
@@ -34,6 +35,11 @@ import { clientIp } from './utils';
 @Injectable()
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
+  /**
+   * @param logger - Application logger used to record 5xx (and 408) errors.
+   * @param configService - Supplies `app.isProd` to decide whether to include the stack trace.
+   * @param moduleRef - Used to lazily resolve the request-scoped {@link ErrorTrackingService}.
+   */
   constructor(
     private readonly logger: AppLogger,
     private readonly configService: ConfigService,
@@ -41,8 +47,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   ) {}
 
   /**
+   * Normalises any thrown value into a consistent JSON error response.
+   *
+   * {@link HttpException} instances are unwrapped for status code, message, and
+   * any `errors` field-validation array; all other thrown values are treated as
+   * unknown errors and normalised to a 500. Responses with a loggable status
+   * (5xx, or any code in {@link LOGGABLE_CODES}) are logged with the stack trace,
+   * and 5xx exceptions are additionally forwarded to {@link ErrorTrackingService}.
+   * In non-production environments the stack trace is included in the response body.
+   *
    * @param exception - The thrown value (may be any type).
-   * @param host      - NestJS arguments host used to access the HTTP context.
+   * @param host - NestJS arguments host used to access the HTTP context.
    */
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -93,6 +108,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       status,
       statusCode,
       path: request.url,
+      correlationId: ActivityLogContext.get().requestId,
       message,
       timestamp: new Date().toISOString(),
     };
@@ -107,6 +123,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
    * Resolves {@link ErrorTrackingService} within the current request's DI context
    * and delegates tracking. Any failure is swallowed — tracking must never
    * affect the HTTP response.
+   *
+   * @param exception - The thrown value being tracked.
+   * @param request - The current request, used to resolve the request-scoped DI context.
    */
   private async trackError(exception: unknown, request: AppRequest): Promise<void> {
     const contextId = ContextIdFactory.getByRequest(request);

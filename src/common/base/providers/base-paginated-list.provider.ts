@@ -1,7 +1,9 @@
 import { ListOptionsDto } from '@/common/base/dtos/list-options.dto';
+import { ModuleName } from '@/common/base/enums';
 import { PaginatedListParams, PaginatedResult } from '@/common/base/repositories/interfaces';
-import { BaseProvider } from './base.provider';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import type { ObjectLiteral } from 'typeorm';
+import { BaseProvider } from './base.provider';
 
 /**
  * Abstract base for providers that return a paginated list of entities.
@@ -42,6 +44,7 @@ export abstract class BasePaginatedListProvider<
    * @param dto - Query parameters forwarded to `buildParams`.
    * @returns `{ items, meta }` where `meta` contains `total`, `pages`, and `currentPage`.
    */
+  @SystemLog(ModuleName.Common)
   override async execute(dto: D): Promise<PaginatedResult<T>> {
     return this.repo.paginatedList(this.buildParams(dto));
   }

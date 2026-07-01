@@ -18,15 +18,22 @@ import { Injectable } from '@nestjs/common';
  * individual config services directly. This reduces coupling and makes it
  * straightforward to mock all configuration in tests.
  *
- * @example
- * ```ts
- * constructor(private readonly config: ConfigService) {}
- * const port = this.config.app.port;
- * const jwtSecret = this.config.jwt.accessTokenSecret;
- * ```
  */
 @Injectable()
 export class ConfigService {
+  /**
+   * @param app - Application-level config (port, base URL, mode, etc.).
+   * @param swagger - Swagger UI protection and setup config.
+   * @param db - Database connection config.
+   * @param rabbitmq - RabbitMQ connection and toggle config.
+   * @param realtime - WebSocket/realtime gateway config.
+   * @param jwt - JWT secrets, expirations, and session limits.
+   * @param google - Google OAuth client config.
+   * @param redis - Redis connection config.
+   * @param mail - Mailgun/transactional email config.
+   * @param cookie - Cookie domain and security config.
+   * @param storage - R2 object storage config.
+   */
   constructor(
     public readonly app: AppConfigService,
     public readonly swagger: SwaggerConfigService,

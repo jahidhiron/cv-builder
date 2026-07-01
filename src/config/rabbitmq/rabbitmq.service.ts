@@ -11,6 +11,9 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class RabbitmqConfigService {
+  /**
+   * @param configService - NestJS config service used to read the `rabbitmq.*` namespace.
+   */
   constructor(private readonly configService: ConfigService) {}
 
   /** Whether RabbitMQ integration is enabled (`ENABLE_RABBITMQ=true`). */

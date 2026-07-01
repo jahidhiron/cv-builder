@@ -17,11 +17,6 @@ import { isArrayOf, isObject } from '../utils';
  *
  * @param opts - {@link TransformToArrayOptions} controlling parsing behaviour.
  *
- * @example
- * ```ts
- * \@TransformToArray<SortByDto>({ itemGuard: isSortByDto })
- * sortBy?: SortByDto[];
- * ```
  */
 export const TransformToArray = <T = unknown>(opts: TransformToArrayOptions<T> = {}) =>
   Transform(({ value }) => {

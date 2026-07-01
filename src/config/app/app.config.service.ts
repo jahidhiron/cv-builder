@@ -10,6 +10,9 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class AppConfigService {
+  /**
+   * @param configService - NestJS config service used to read the `app.*` namespace.
+   */
   constructor(private readonly configService: ConfigService) {}
 
   /** Current runtime environment (`development`, `staging`, `production`, `testing`). */

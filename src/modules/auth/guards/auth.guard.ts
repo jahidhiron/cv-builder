@@ -1,4 +1,4 @@
-import { AUTH_TYPE_KEY } from '@/modules/auth/constants/auth.constant';
+import { AUTH_TYPE_KEY } from '@/modules/auth/constants';
 import { AuthType } from '@/modules/auth/enums';
 import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ContextIdFactory, ModuleRef, Reflector } from '@nestjs/core';

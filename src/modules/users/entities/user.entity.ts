@@ -1,4 +1,5 @@
 ﻿import { BaseSoftDeleteEntity } from '@/common/base/entities';
+import { Sensitive } from '@/modules/activity-log/decorators';
 import { Role } from '@/modules/roles/entities/role.entity';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
@@ -25,6 +26,7 @@ export class User extends BaseSoftDeleteEntity {
   @Column({ length: 255, unique: true })
   email!: string;
 
+  @Sensitive()
   @Column({ type: 'text', nullable: true })
   password?: string | null;
 

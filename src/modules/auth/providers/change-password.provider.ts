@@ -1,15 +1,17 @@
 import { ModuleName } from '@/common/base/enums';
 import { ConfigService } from '@/config';
-import { SecurityAuditEvent } from '@/modules/auth/entities/security-audit-log.entity';
-import { UserPayload } from '@/modules/auth/interfaces';
-import { AuditLogProvider } from '@/modules/auth/providers/audit-log.provider';
+import { ActivityLogService } from '@/modules/activity-log/activity-log.service';
+import { SystemLog } from '@/modules/activity-log/decorators';
+import { LogStatus } from '@/modules/activity-log/enums';
+import { AuthAction } from '@/modules/auth/enums/auth-action.enum';
+import type { UserPayload } from '@/modules/auth/interfaces';
 import { CheckPasswordHistoryProvider } from '@/modules/auth/providers/check-password-history.provider';
 import { RevokeRefreshTokenProvider } from '@/modules/auth/providers/revoke-refresh-token.provider';
 import { SavePasswordHistoryProvider } from '@/modules/auth/providers/save-password-history.provider';
 import { UserService } from '@/modules/users/user.service';
 import { HashService } from '@/shared/hash/hash.service';
 import { HibpService } from '@/shared/hibp/hibp.service';
-import { SendEmailParams } from '@/shared/mail/interfaces';
+import { buildChangePasswordEmail } from '@/modules/auth/mail';
 import { MailService } from '@/shared/mail/mail.service';
 import { RedisService } from '@/shared/redis/redis.service';
 import { ErrorResponse } from '@/shared/response';
@@ -36,18 +38,51 @@ export class ChangePasswordProvider {
     private readonly checkPasswordHistory: CheckPasswordHistoryProvider,
     private readonly savePasswordHistory: SavePasswordHistoryProvider,
     private readonly hibpService: HibpService,
-    private readonly auditLog: AuditLogProvider,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
+  /**
+   * Changes the authenticated user's password.
+   *
+   * Steps:
+   * 1. **User fetch** — loads the full user record from the database.
+   * 2. **OAuth guard** — rejects accounts with no password set (Google OAuth users).
+   * 3. **Current password check** — verifies `oldPassword` against the stored hash.
+   * 4. **History check** — rejects the new password if it matches any of the last 5 hashes.
+   * 5. **Breach check** — rejects the new password if it appears in HIBP's breached database.
+   * 6. **Password update** — hashes and persists the new password; saves to history.
+   * 7. **Session revocation** — revokes all DB refresh tokens, blacklists live access
+   *    tokens in Redis, and wipes all session keys to force re-authentication on all devices.
+   * 8. **Confirmation email** — notifies the account owner that their password has changed.
+   *
+   * @param dto         - Contains `oldPassword` and `newPassword`.
+   * @param currentUser - The authenticated user extracted from the JWT.
+   * @returns Resolves when the password has been changed and confirmation email sent.
+   * @throws {ForbiddenException}           When the account has no password or `oldPassword` does not match.
+   * @throws {UnprocessableEntityException} When the new password was used recently or is breached.
+   */
+  @SystemLog(ModuleName.Auth)
   async execute(dto: ChangePasswordDto, currentUser: UserPayload): Promise<void> {
     const { user } = await this.userService.findOne({ id: currentUser.id });
 
     if (!user.password) {
+      this.activityLog.logUser({
+        action: AuthAction.ChangePasswordFailed,
+        status: LogStatus.Failed,
+        userId: user.id,
+        metadata: { reason: 'no-password-set' },
+      });
       return this.errorResponse.forbidden({ module: ModuleName.Auth, key: 'no-password-set' });
     }
 
     const isMatch = await this.hashService.verify(user.password, dto.oldPassword);
     if (!isMatch) {
+      this.activityLog.logUser({
+        action: AuthAction.ChangePasswordFailed,
+        status: LogStatus.Failed,
+        userId: user.id,
+        metadata: { reason: 'old-password-not-match' },
+      });
       return this.errorResponse.forbidden({
         module: ModuleName.Auth,
         key: 'old-password-not-match',
@@ -79,15 +114,12 @@ export class ChangePasswordProvider {
       );
     }
 
-    const { app, mail } = this.configService;
-    const emailParams: SendEmailParams = {
-      module: ModuleName.Auth,
-      template: 'change-password',
-      to: user.email,
-      subject: `Your ${app.companyName} password was changed`,
-      context: { name: user.name, logoUrl: mail.logoUrl, supportEmail: mail.supportEmail },
-    };
-    await this.emailService.sendEmail(emailParams);
-    this.auditLog.log({ event: SecurityAuditEvent.PasswordChange, userId: user.id });
+    await this.emailService.sendEmail(
+      buildChangePasswordEmail({ ...user }, { companyName: this.configService.app.companyName }),
+    );
+    this.activityLog.logUser({
+      action: AuthAction.ChangePasswordSuccess,
+      userId: user.id,
+    });
   }
 }

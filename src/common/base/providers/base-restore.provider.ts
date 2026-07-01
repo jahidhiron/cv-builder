@@ -1,4 +1,6 @@
 import { BaseSoftDeleteEntity } from '@/common/base/entities';
+import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import type { FindOptionsWhere, ObjectLiteral } from 'typeorm';
 import { BaseProvider } from './base.provider';
 
@@ -38,6 +40,7 @@ export abstract class BaseRestoreProvider<T extends ObjectLiteral> extends BaseP
    * @param where - TypeORM `FindOptionsWhere` conditions (e.g. `{ id }` from a route param).
    * @returns The restored entity.
    */
+  @SystemLog(ModuleName.Common)
   override async execute(where: FindOptionsWhere<T>): Promise<T> {
     const entity = await this.findOne(where);
 

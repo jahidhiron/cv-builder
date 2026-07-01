@@ -7,6 +7,9 @@ import helmet from 'helmet';
  * Applies Helmet security headers and CORS to the application.
  * CSP is disabled for API-only use; HSTS is enabled only in production
  * so local development over HTTP is not broken by browser HSTS caching.
+ *
+ * @param app - The Nest application instance to configure.
+ * @param isProd - Whether the app is running in production; gates HSTS.
  */
 export function setupSecurity(app: INestApplication, isProd = false): void {
   app.use(

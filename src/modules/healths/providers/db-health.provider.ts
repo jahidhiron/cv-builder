@@ -1,4 +1,6 @@
+import { ModuleName } from '@/common/base/enums';
 import { AppLogger } from '@/config/logger';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import {
   DbErrorDto,
   DbHealthDto,
@@ -9,8 +11,21 @@ import { ErrorResponse } from '@/shared/response';
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
+/**
+ * Provider for a comprehensive PostgreSQL health check.
+ *
+ * Collects latency, server version, uptime, queries-per-second, active connections,
+ * and connection pool limits in a single pass and returns them as a {@link DbHealthResponseDto}.
+ *
+ * @module Health
+ */
 @Injectable()
 export class DbHealthProvider {
+  /**
+   * @param dataSource - Active TypeORM DataSource used to run diagnostic queries.
+   * @param logger - Application logger used to record failures.
+   * @param errorResponse - Shared utility for building standardised error responses.
+   */
   constructor(
     private readonly dataSource: DataSource,
     private readonly logger: AppLogger,
@@ -18,9 +33,17 @@ export class DbHealthProvider {
   ) {}
 
   /**
-   * Check database health, latency, version, uptime, QPS, and connection stats
-   * @returns Database health DTO or error response
+   * Runs all diagnostic queries against the database and returns a full health snapshot.
+   *
+   * Collects: ping latency, server version, uptime (seconds since postmaster start),
+   * active connection count, queries-per-second (derived from `pg_stat_database`),
+   * and connection pool limits via {@link getPostgresConnectionStats}.
+   *
+   * Returns a 500 error response if the initial ping fails.
+   *
+   * @returns A {@link DbHealthResponseDto} on success, or a 500 error response on failure.
    */
+  @SystemLog(ModuleName.Health)
   async execute(): Promise<DbHealthResponseDto> {
     const result: DbHealthDto = {
       service: 'UP',
@@ -30,20 +53,17 @@ export class DbHealthProvider {
     };
 
     try {
-      // Ping database and measure latency
       const start = Date.now();
       await this.dataSource.query('SELECT 1');
       const end = Date.now();
       result.database = 'UP';
       result.dbLatencyMs = end - start;
 
-      // Fetch PostgreSQL version
       const versionResult = await this.dataSource.query<{ version: string }[]>(
         'SELECT version()',
       );
       result.dbVersion = versionResult[0]?.version;
 
-      // Fetch database uptime (seconds since postmaster start)
       const uptimeResult = await this.dataSource.query<{
         seconds: number;
       }[]>(
@@ -52,7 +72,6 @@ export class DbHealthProvider {
       const uptimeSec = uptimeResult[0]?.seconds ?? 1;
       result.dbUptimeSeconds = uptimeSec;
 
-      // Fetch number of active connections
       const connectionsResult = await this.dataSource.query<{ count: string }[]>(
         'SELECT count(*)::int AS count FROM pg_stat_activity',
       );
@@ -61,7 +80,6 @@ export class DbHealthProvider {
         : 0;
       result.threadsRunning = totalConnections;
 
-      // Calculate queries per second (QPS) from pg_stat_database stats
       const statsResult = await this.dataSource.query<{
         xact_commit: string;
         xact_rollback: string;
@@ -75,10 +93,8 @@ export class DbHealthProvider {
         result.queriesPerSecond = parseFloat((totalTx / uptimeSec).toFixed(2));
       }
 
-      // Fetch PostgreSQL connection stats
       result.postgresConnections = await this.getPostgresConnectionStats();
     } catch (err: unknown) {
-      // Handle errors and log
       result.database = 'DOWN';
       const dbError: DbErrorDto = {
         message: err instanceof Error ? err.message : String(err),
@@ -93,8 +109,9 @@ export class DbHealthProvider {
   }
 
   /**
-   * Get PostgreSQL connection stats: current, max used since reset, and max allowed
-   * @returns PostgresConnectionStatsDto or undefined if query fails
+   * Queries PostgreSQL system views for current, max-used, and max-allowed connection counts.
+   *
+   * @returns A {@link PostgresConnectionStatsDto} on success, or `undefined` if the query fails.
    */
   private async getPostgresConnectionStats(): Promise<PostgresConnectionStatsDto | undefined> {
     try {

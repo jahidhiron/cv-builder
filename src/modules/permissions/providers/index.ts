@@ -1,4 +1,7 @@
 export * from './assign-role-permissions.provider';
+export * from './bulk-delete-permissions.provider';
+export * from './bulk-remove-role-permissions.provider';
+export * from './find-all-permissions.provider';
 export * from './find-role-permissions-by-role.provider';
 export * from './upsert-permission.provider';
 export * from './create-permission.provider';

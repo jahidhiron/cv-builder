@@ -10,6 +10,9 @@ import type { Request } from 'express';
  *
  * Used to group refresh tokens into a "family" per device so the auth flow
  * can revoke every session from the same device atomically.
+ *
+ * @param request - Incoming Express request; must have `ip` and `headers` populated.
+ * @returns       A base64-encoded fingerprint string capped at 64 characters.
  */
 export function getDeviceFingerprint(request: Request): string {
   const ip = clientIp(request);

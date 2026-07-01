@@ -13,6 +13,7 @@ import { devFormat, fileTransport, prodFormat } from './logger.formats';
  *   a rotating file transport (`error-*.log`), archived daily for 14 days.
  *
  * @param appConfig - Resolved app config service (used to detect `isProd`).
+ * @returns A Winston logger options object with the `transports` array configured.
  */
 export const createWinstonLoggerConfig = (appConfig: AppConfigService) => ({
   transports: [

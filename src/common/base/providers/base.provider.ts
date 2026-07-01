@@ -10,7 +10,7 @@ import type {
 } from 'typeorm';
 
 /**
- * Options accepted by {@link BaseProvider.findOne}.
+ * Options accepted by {@link BaseProvider#findOne}.
  *
  * The {@link ThrowError} generic controls the return type of `findOne`:
  * - `true`  (default) — the method throws a 404 and never resolves to `null`,
@@ -68,7 +68,7 @@ export abstract class BaseProvider<T extends ObjectLiteral> {
    * against a `null` return.
    *
    * The optional `options` argument is forwarded straight to
-   * {@link BaseRepository.findOne}, allowing callers to eager-load relations,
+   * {@link BaseRepository#findOne}, allowing callers to eager-load relations,
    * select specific columns, or apply sort order without losing the 404
    * behaviour.
    *
@@ -82,21 +82,10 @@ export abstract class BaseProvider<T extends ObjectLiteral> {
    * @returns The matched entity, or `null` when `options.throwError` is
    *          `false` and no row matches.
    */
-  protected findOne(where: FindOptionsWhere<T>): Promise<T>;
-  protected findOne(where: FindOptionsWhere<T>, options: FindOneOptions<T, true>): Promise<T>;
-  protected findOne(
+  protected async findOne<TThrow extends boolean = true>(
     where: FindOptionsWhere<T>,
-    options: FindOneOptions<T, false>,
-  ): Promise<T | null>;
-  /** Fallback overload — for callers whose `throwError` is not statically known; return type widens to `T | null`. */
-  protected findOne(
-    where: FindOptionsWhere<T>,
-    options?: FindOneOptions<T, boolean>,
-  ): Promise<T | null>;
-  protected async findOne(
-    where: FindOptionsWhere<T>,
-    options?: FindOneOptions<T, boolean>,
-  ): Promise<T | null> {
+    options?: FindOneOptions<T, TThrow>,
+  ): Promise<TThrow extends false ? T | null : T> {
     const { throwError = true, ...repoOptions } = options ?? {};
     const entity = await this.repo.findOne(where, repoOptions);
     if (!entity) {
@@ -106,9 +95,9 @@ export abstract class BaseProvider<T extends ObjectLiteral> {
           key: `${this.entityName}-not-found`,
         });
       }
-      return null;
+      return null as never;
     }
-    return entity;
+    return entity as never;
   }
 
   abstract execute(...args: any[]): Promise<unknown>;

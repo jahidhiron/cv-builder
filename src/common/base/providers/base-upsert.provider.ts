@@ -1,3 +1,5 @@
+import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import type { DeepPartial, ObjectLiteral } from 'typeorm';
 import { BaseProvider } from './base.provider';
 
@@ -43,6 +45,7 @@ export abstract class BaseUpsertProvider<
    * @param conflictPaths - Column names that define the uniqueness constraint
    *                        (e.g. `['name']` or `['userId', 'roleId']`).
    */
+  @SystemLog(ModuleName.Common)
   override async execute(data: D | D[], conflictPaths: (keyof T & string)[]): Promise<void> {
     await this.beforeUpsert(data);
     const payload = Array.isArray(data)

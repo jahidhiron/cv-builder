@@ -19,7 +19,6 @@ export class PermissionDto {
    * Machine-readable key in `domain:action` format.
    * Embedded in JWTs and evaluated by `PermissionsGuard` on each request.
    *
-   * @example 'roles:create'
    */
   @ApiProperty({ example: 'roles:create' })
   key!: string;

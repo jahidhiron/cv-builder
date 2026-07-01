@@ -25,13 +25,15 @@ A production-grade REST API for a CV/resume building platform. Built with **Nest
 
 ## Features
 
-- **Authentication** — JWT access/refresh tokens, Google OAuth, email verification, password reset, multi-session tracking
+- **Authentication** — JWT access/refresh tokens, Google OAuth, email verification, password reset, "remember me" extended sessions, multi-session tracking
 - **RBAC** — Role-based access control with fine-grained permissions, auto-discovered from controller decorators
 - **User Management** — Full CRUD, soft-delete/restore, avatar upload to Cloudflare R2
+- **Activity Logging** — Per-request HTTP logs, user-action audit trail, and provider-level system logs (`@SystemLog` decorator), optionally deferred to a RabbitMQ consumer for async persistence
+- **Error Tracking** — Centralized capture of unhandled server errors with an admin API to list/inspect/resolve/delete them, plus optional email alerts
 - **Real-time** — Socket.IO WebSocket gateway for live updates
 - **Async Messaging** — RabbitMQ producers/consumers for decoupled background processing
 - **Cron Jobs** — Scheduled tasks for token cleanup and session enforcement
-- **Structured Logging** — Winston with daily-rotating file transport and per-request HTTP logs
+- **Structured Logging** — Winston with daily-rotating file transport and per-request HTTP logs, correlated via `AsyncLocalStorage`-based request context
 - **i18n** — Multi-language support via `nestjs-i18n` (header, cookie, and query-param resolution)
 - **Swagger** — Auto-generated interactive API docs with optional Basic Auth protection
 - **Rate Limiting** — Redis fixed-window rate limiting per route
@@ -151,28 +153,31 @@ src/
 │   ├── base/
 │   │   ├── entities/          # BaseEntity, BaseTimestampEntity, BaseSoftDeleteEntity
 │   │   ├── repositories/      # BaseRepository<T> — generic CRUD + pagination
+│   │   ├── providers/         # Base create/update/upsert/delete/restore/list providers
 │   │   ├── dtos/              # ListOptionsDto, SortByDto, MetaDto
 │   │   └── enums/             # ModuleName enum
 │   ├── filters/               # GlobalExceptionFilter
 │   ├── interceptors/          # HttpLoggingInterceptor, SerializeInterceptor
-│   ├── middlewares/           # Helmet + CORS (setupSecurity), Swagger auth
+│   ├── middlewares/           # Helmet + CORS (setupSecurity), Swagger auth, request-context (AsyncLocalStorage)
 │   ├── pipes/                 # ValidationPipe, DeserializeQueryPipe, ParseIdPipe
 │   ├── swagger/               # Reusable Swagger builders + decorators
-│   └── utils/                 # clientIp, deviceFingerprint helpers
+│   └── utils/                 # clientIp, clientAgent, deviceFingerprint helpers
 │
 ├── modules/                   # Feature modules
 │   ├── app/                   # Root controller (GET /app/status)
-│   ├── auth/                  # JWT auth, OAuth, email verification, sessions
+│   ├── auth/                  # JWT auth, OAuth, email verification, remember-me, sessions
 │   ├── users/                 # User CRUD, soft-delete, avatar upload
-│   ├── roles/                 # Role CRUD, admin permission sync
+│   ├── roles/                 # Role CRUD, admin permission sync (used by auth/users/permissions)
 │   ├── permissions/           # Permission CRUD, role-permission assignment
+│   ├── activity-log/          # Request logs, user activity logs, system activity logs (@SystemLog)
+│   ├── error-tracking/        # Server error capture, admin inspection API, email alerts
 │   └── healths/               # Health check endpoints
 │
 ├── infrastructure/            # Infrastructure layer
-│   ├── db/                    # TypeORM setup + 5 migration files
-│   ├── rabbitmq/              # AMQP producers + consumers
+│   ├── db/                    # TypeORM setup + migration files
+│   ├── rabbitmq/              # AMQP connection setup (feature modules define their own producers/consumers)
 │   ├── realtime/              # Socket.IO gateway + SocketService
-│   └── cron/                  # Scheduled jobs (@Cron decorators)
+│   └── cron/                  # Scheduled jobs (@Cron decorators) — e.g. expired refresh-token purge
 │
 └── shared/                    # Global services (available everywhere without imports)
     ├── hash/                  # Password hashing (scrypt) + token generation
@@ -187,6 +192,8 @@ src/
     └── hibp/                  # Have I Been Pwned password check
 ```
 
+> **Note:** the migrations in `src/infrastructure/db/migrations/` already include schemas for resume content, documents, and billing — these tables exist in the database ahead of their corresponding feature modules being built out under `src/modules/`.
+
 ---
 
 ## Scripts
@@ -197,6 +204,7 @@ src/
 | `start:debug` | Development server with Node.js inspector |
 | `start` | Run compiled output (production) |
 | `build` | Compile TypeScript to `dist/` |
+| `db:create` | Create the target database if it doesn't already exist (runs automatically before `start*`) |
 | `migration:create` | Scaffold a new empty migration file |
 | `migration:generate` | Generate migration from entity changes |
 | `migration:run` | Apply all pending migrations |

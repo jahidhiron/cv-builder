@@ -9,6 +9,9 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class SwaggerConfigService {
+  /**
+   * @param configService - NestJS config service used to read the `swagger.*` namespace.
+   */
   constructor(private readonly configService: ConfigService) {}
 
   /** Basic-auth username for the Swagger UI (`SWAGGER_USER`). */

@@ -2,6 +2,13 @@ import { API_BASE_URL, COMPANY_NAME, DEFAULT_PORT } from './app.constant';
 import { AppMode } from '@/config/app/enums';
 import { registerAs } from '@nestjs/config';
 
+/**
+ * Registers the `app.*` config namespace consumed by `AppConfigService`.
+ *
+ * Derives environment flags from `APPLICATION_MODE` and reads the server port,
+ * public API/client base URLs, company display name, and HIBP check toggle,
+ * falling back to sensible defaults when the corresponding env vars are unset.
+ */
 export default registerAs('app', () => {
   const env = (process.env.APPLICATION_MODE as AppMode) || AppMode.Development;
 

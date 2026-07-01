@@ -9,11 +9,11 @@ import {
   ResendVerificationProvider,
   ResetPasswordProvider,
   RevokeSessionProvider,
-  SessionInfo,
   SigninProvider,
   SignupProvider,
   VerifyEmailProvider,
 } from '@/modules/auth/providers';
+import type { SessionInfo } from '@/modules/auth/providers/interfaces';
 import { Injectable } from '@nestjs/common';
 import {
   ChangePasswordDto,
@@ -53,62 +53,103 @@ export class AuthService {
     private readonly revokeSessionProvider: RevokeSessionProvider,
   ) {}
 
-  /** Register a new user with email and password. */
+  /**
+   * @param dto - Signup payload containing email, password, and profile fields.
+   * @returns The newly created user record.
+   */
   signup(dto: SignupDto) {
     return this.signupProvider.execute(dto);
   }
 
-  /** Authenticate a user with email and password and issue JWT tokens. */
+  /**
+   * @param dto - Email and password credentials.
+   * @returns `{ user, token: { accessToken, refreshToken } }`.
+   */
   signin(dto: SigninDto) {
     return this.signinProvider.execute(dto);
   }
 
-  /** Authenticate or register a user via Google OAuth id token. */
+  /**
+   * @param dto - Google OAuth id token payload.
+   * @returns `{ user, token: { accessToken, refreshToken } }`.
+   */
   googleSignin(dto: GoogleSigninDto) {
     return this.googleSigninProvider.execute(dto);
   }
 
-  /** Issue a new access/refresh token pair from the body token or cookie. */
+  /**
+   * @param dto         - Optional body containing `refreshToken`.
+   * @param cookieToken - Raw refresh JWT read from the HTTP-only cookie (fallback).
+   * @returns `{ token: { accessToken, refreshToken } }`.
+   */
   refreshToken(dto: RefreshTokenDto, cookieToken?: string) {
     return this.refreshTokenProvider.execute(dto.refreshToken ?? cookieToken ?? '');
   }
 
-  /** Revoke tokens and clear auth cookies for the authenticated user. */
+  /**
+   * @param user            - Authenticated user's JWT payload.
+   * @param dto             - Query options; `type` is `'current'` or `'all'`.
+   * @param rawRefreshToken - Raw refresh JWT from the cookie (fallback when not in Redis).
+   * @returns Resolves when the logout is complete.
+   */
   logout(user: UserPayload, dto: LogoutQueryDto, rawRefreshToken?: string) {
     return this.logoutProvider.execute(user, dto, rawRefreshToken);
   }
 
-  /** Verify the email-verification token sent to the user's inbox. */
+  /**
+   * @param dto - Payload containing the `email` and one-time `token`.
+   * @returns Resolves when the email has been verified.
+   */
   verifyEmail(dto: VerifyEmailDto) {
     return this.verifyEmailProvider.execute(dto);
   }
 
-  /** Resend the email-verification link to the supplied address. */
+  /**
+   * @param dto - Payload containing the `email` address to re-verify.
+   * @returns Resolves when the verification email has been dispatched (or silently when ineligible).
+   */
   resendVerification(dto: ResendVerificationDto) {
     return this.resendVerificationProvider.execute(dto);
   }
 
-  /** Initiate the password-reset flow by emailing a reset link. */
+  /**
+   * @param dto - Payload containing the account `email` address.
+   * @returns Resolves when the reset email has been dispatched (or silently when ineligible).
+   */
   forgotPassword(dto: ForgotPasswordDto) {
     return this.forgotPasswordProvider.execute(dto);
   }
 
-  /** Consume the password-reset token and set a new password. */
+  /**
+   * @param dto - Contains `email`, one-time `token`, and the new `password`.
+   * @returns Resolves when the password has been reset.
+   */
   resetPassword(dto: ResetPasswordDto) {
     return this.resetPasswordProvider.execute(dto);
   }
 
-  /** Change the password for an already-authenticated user. */
+  /**
+   * @param dto  - Contains `oldPassword` and `newPassword`.
+   * @param user - Authenticated user's JWT payload.
+   * @returns Resolves when the password has been changed.
+   */
   changePassword(dto: ChangePasswordDto, user: UserPayload) {
     return this.changePasswordProvider.execute(dto, user);
   }
 
-  /** List all active sessions for the authenticated user. */
-  listSessions(user: UserPayload): Promise<SessionInfo[]> {
+  /**
+   * @param user - Authenticated user's JWT payload.
+   * @returns `{ sessions }` — metadata for every active session.
+   */
+  listSessions(user: UserPayload): Promise<{ sessions: SessionInfo[] }> {
     return this.listSessionsProvider.execute(user);
   }
 
-  /** Revoke a specific session by sessionId for the authenticated user. */
+  /**
+   * @param user      - Authenticated user's JWT payload.
+   * @param sessionId - The session identifier to revoke.
+   * @returns Resolves when the session has been fully revoked.
+   */
   revokeSession(user: UserPayload, sessionId: string): Promise<void> {
     return this.revokeSessionProvider.execute(user, sessionId);
   }

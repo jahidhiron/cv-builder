@@ -22,6 +22,17 @@ export class ListServerErrorsProvider extends BasePaginatedListProvider<
     super(ModuleName.ErrorTracking, repo, errorResponse);
   }
 
+  /**
+   * Builds the repository query parameters for a paginated server-error listing.
+   *
+   * Merges the base pagination params from the DTO with a fixed
+   * `searchBy: ['errorName', 'message', 'path']` and, when a `status` filter
+   * is provided, a `query: { status }` constraint.
+   *
+   * @param dto - Validated query parameters (page, limit, search term, status, etc.).
+   * @returns The fully assembled {@link PaginatedListParams} passed to the
+   *          repository.
+   */
   protected override buildParams(dto: ServerErrorListQueryDto): PaginatedListParams<ServerError> {
     return {
       ...super.buildParams(dto),

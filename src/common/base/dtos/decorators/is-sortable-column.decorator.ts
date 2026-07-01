@@ -11,11 +11,6 @@ import { SortByDto } from '../sort-by.dto';
  * @param columns          - Allowlist of column names the caller may sort by.
  * @param validationOptions - Standard class-validator options (e.g. custom `message`).
  *
- * @example
- * ```ts
- * \@IsSortableColumn(['name', 'createdAt'])
- * sortBy: SortByDto[];
- * ```
  */
 export function IsSortableColumn(
   columns: string[],

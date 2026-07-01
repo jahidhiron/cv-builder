@@ -1,5 +1,7 @@
 import type { DeepPartial, FindOptionsWhere, ObjectLiteral } from 'typeorm';
 
+import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { BaseProvider } from './base.provider';
 
 /**
@@ -80,6 +82,7 @@ export abstract class BaseUpdateManyProvider<
    * @returns The updated entities returned by
    *          `repo.updateMany`.
    */
+  @SystemLog(ModuleName.Common)
   async execute(where: FindOptionsWhere<T>, dtos: D[]): Promise<T[]> {
     const entities = await this.repo.findMany(where);
     if (!entities.length) {
@@ -90,9 +93,7 @@ export abstract class BaseUpdateManyProvider<
     }
 
     const isAnyDeleted = entities.some(
-      (e) =>
-        'isDeleted' in e &&
-        (e as unknown as { isDeleted: boolean }).isDeleted,
+      (e) => 'isDeleted' in e && (e as unknown as { isDeleted: boolean }).isDeleted,
     );
     if (isAnyDeleted) {
       await this.errorResponse.notFound({
@@ -106,7 +107,7 @@ export abstract class BaseUpdateManyProvider<
     let payload: Partial<DeepPartial<T>> = {};
     for (const dto of dtos) {
       await this.beforeUpdate(reference, dto);
-      payload = await this.buildPayload(dto) as Partial<DeepPartial<T>>;
+      payload = (await this.buildPayload(dto)) as Partial<DeepPartial<T>>;
     }
 
     const updated = await this.repo.updateMany(where, payload as DeepPartial<T>);

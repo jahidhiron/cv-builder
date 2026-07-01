@@ -1,4 +1,4 @@
-import { AUTH_TYPE_KEY } from '@/modules/auth/constants/auth.constant';
+import { AUTH_TYPE_KEY } from '@/modules/auth/constants';
 import { PERMISSIONS_KEY } from '@/modules/auth/decorators/require-permissions.decorator';
 import { SKIP_PERMISSIONS_KEY } from '@/modules/auth/decorators/skip-permissions.decorator';
 import { AuthType } from '@/modules/auth/enums';

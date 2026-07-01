@@ -102,7 +102,9 @@ Copy the appropriate file to `.env` and fill in real values. The app validates a
 | `JWT_REFRESH_EXPIRES_IN` | No | `7d` | Duration string |
 | `JWT_ACCESS_EXPIRES_IN_SECONDS` | No | `900` | Same as above but in seconds (used by cookie `maxAge`) |
 | `JWT_REFRESH_EXPIRES_IN_SECONDS` | No | `604800` | Same as above |
-| `JWT_MAX_SESSION_DAYS` | No | `30` | Maximum concurrent sessions per user |
+| `JWT_MAX_SESSION_DAYS` | No | `30` | Maximum session age before the cron job prunes it |
+| `JWT_REMEMBER_ME_EXPIRES_IN_SECONDS` | No | `2592000` | Refresh token lifetime (seconds) when signin sets `rememberMe: true` |
+| `JWT_REMEMBER_ME_MAX_SESSION_DAYS` | No | `90` | Absolute session age cap when `rememberMe: true` |
 
 #### Redis
 
@@ -241,13 +243,17 @@ Never set `name:` on `@Column()` or `@Entity()` manually — the naming strategy
 
 ### Schema overview
 
-5 migrations create the full schema:
+7 migrations create the full schema:
 
 1. **RBAC** — `roles`, `permissions`, `role_permissions`
-2. **Users + Auth** — `users`, `verification_tokens`, `refresh_tokens`, `login_history`, `password_history`, `security_audit_logs`
-3. **Resume content** — `user_profiles`, `resumes`, `resume_sections`, `templates`, etc.
-4. **Documents** — `cover_letters`, `ats_scores`, `ai_generations`, `resume_imports`, `resume_exports`
-5. **Billing** — `plans`, `subscriptions`, `entitlements`, etc.
+2. **Users + Auth** — `users`, `verification_tokens`, `refresh_tokens`, `login_histories`, `password_histories`
+3. **Server errors** — `server_errors` (backs the `error-tracking` module)
+4. **Activity logs** — `request_logs`, `user_activity_logs`, `system_activity_logs` (backs the `activity-log` module)
+5. **Resume content** — `categories`, `resume_styles`, `section_types`, `profile_field_definitions`, `user_profiles`, `templates`, `resumes`, `resume_sections`
+6. **Documents** — `cover_letters`, `ats_scores`, `ai_generations`, `resume_imports`, `resume_exports`
+7. **Billing** — `billing_intervals`, `plans`, `plan_features`, `plan_prices`, `subscriptions`, `subscription_events`, `entitlements`
+
+Migrations 5–7 (resume content, documents, billing) already exist in the database, but their corresponding feature modules haven't been built yet under `src/modules/`.
 
 ---
 

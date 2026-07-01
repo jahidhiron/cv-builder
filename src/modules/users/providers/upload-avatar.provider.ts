@@ -1,17 +1,14 @@
 import { ModuleName } from '@/common/base/enums';
+import { ActivityLogService } from '@/modules/activity-log/activity-log.service';
+import { SystemLog } from '@/modules/activity-log/decorators';
+import { UserAction } from '@/modules/users/enums/user-action.enum';
 import { FindOneUserProvider } from '@/modules/users/providers/find-one-user.provider';
 import { UpdateUserProvider } from '@/modules/users/providers/update-user.provider';
 import { ErrorResponse } from '@/shared/response';
-import { MulterFile, R2StorageService } from '@/shared/storage';
+import { R2StorageService } from '@/shared/storage';
+import type { MulterFile } from '@/shared/storage';
 import { Injectable, Scope } from '@nestjs/common';
-
-const ALLOWED_MIME_TYPES: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-};
-
-const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+import { ALLOWED_MIME_TYPES, MAX_AVATAR_SIZE_BYTES } from './constants';
 
 /**
  * Handles avatar uploads for a user.
@@ -33,8 +30,34 @@ export class UploadAvatarProvider {
     private readonly updateUser: UpdateUserProvider,
     private readonly r2Storage: R2StorageService,
     private readonly errorResponse: ErrorResponse,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
+  /**
+   * Validates and stores a new avatar for the user identified by `userId`.
+   *
+   * Validation order:
+   * 1. Rejects empty files (size === 0).
+   * 2. Rejects files exceeding {@link MAX_AVATAR_SIZE_BYTES} (5 MB).
+   * 3. Rejects unsupported MIME types (only JPEG, PNG, and WebP are allowed).
+   *
+   * Upload sequence:
+   * 1. Fetches the current user record — throws 404 when not found.
+   * 2. Deletes the existing avatar from R2 when one is set (failure is
+   *    silently ignored to avoid blocking the upload).
+   * 3. Uploads the new file to R2 under
+   *    `users/avatars/<userId>/<timestamp>.<ext>`.
+   * 4. Persists the resulting public URL to the user record.
+   * 5. Emits an `AvatarUploaded` activity-log entry.
+   *
+   * @param userId - Primary key of the user whose avatar is being replaced.
+   * @param file   - The uploaded file from the multipart request.
+   * @returns An object containing the new public `avatarUrl`.
+   * @throws {BadRequestException} When the file is empty, too large, or has
+   *         an unsupported MIME type.
+   * @throws {NotFoundException}   When no user with `userId` exists.
+   */
+  @SystemLog(ModuleName.User)
   async execute(userId: number, file: MulterFile): Promise<{ avatarUrl: string }> {
     if (file.size === 0) {
       await this.errorResponse.badRequest({
@@ -59,8 +82,6 @@ export class UploadAvatarProvider {
     }
 
     const user = await this.findOneUser.execute({ id: userId });
-    if (!user)
-      return await this.errorResponse.notFound({ module: ModuleName.User, key: 'user-not-found' });
 
     if (user.avatarUrl) {
       const oldKey = this.r2Storage.keyFromUrl(user.avatarUrl);
@@ -71,6 +92,12 @@ export class UploadAvatarProvider {
     const { url } = await this.r2Storage.uploadFile(key, file);
 
     await this.updateUser.execute({ id: userId }, { avatarUrl: url });
+
+    this.activityLog.logUser({
+      action: UserAction.AvatarUploaded,
+      userId,
+      metadata: { avatarUrl: url },
+    });
 
     return { avatarUrl: url };
   }

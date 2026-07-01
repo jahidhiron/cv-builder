@@ -18,6 +18,11 @@ export class PurgeExpiredTokensCronService {
     private readonly logger: AppLogger,
   ) {}
 
+  /**
+   * Cron handler triggered at midnight every day to purge stale refresh tokens.
+   *
+   * @returns Promise that resolves when the purge has completed
+   */
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handlePurgeExpiredTokens(): Promise<void> {
     this.logger.log('Starting nightly refresh-token purge', PurgeExpiredTokensCronService.name);

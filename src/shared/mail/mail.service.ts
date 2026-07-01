@@ -1,6 +1,6 @@
 import { ConfigService } from '@/config';
 import { Inject, Injectable } from '@nestjs/common';
-import { MAIL_PROVIDER } from './mail.constant';
+import { MAIL_PROVIDER } from './constants';
 import type { SendEmailParams, SendMailOptions } from './interfaces/send-mail.interface';
 
 /**
@@ -15,6 +15,10 @@ import type { SendEmailParams, SendMailOptions } from './interfaces/send-mail.in
  */
 @Injectable()
 export class MailService {
+  /**
+   * @param provider - Active mail transport, injected via the {@link MAIL_PROVIDER} token.
+   * @param configService - Provides app/mail config (env, companyName, supportEmail, logoUrl).
+   */
   constructor(
     @Inject(MAIL_PROVIDER) private readonly provider: { send(options: SendMailOptions): Promise<void> },
     private readonly configService: ConfigService,
@@ -37,6 +41,7 @@ export class MailService {
         ...(params.context ?? {}),
         companyName: this.configService.app.companyName,
         supportEmail: this.configService.mail.supportEmail,
+        logoUrl: this.configService.mail.logoUrl,
         year: new Date().getFullYear(),
       },
     };

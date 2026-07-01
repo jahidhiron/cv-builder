@@ -13,8 +13,8 @@ import { IncomingHttpHeaders } from 'http';
  * 2. Raw TCP `remoteAddress` from the socket.
  * 3. Fallback string `"unknown"` when nothing is available.
  *
- * @param req - Any request-like object with `ip` or `connection.remoteAddress`.
- * @returns The resolved IP string.
+ * @param req     - Any request-like object exposing `ip` or `connection.remoteAddress`.
+ * @returns The resolved IP string, or `"unknown"` when no address is available.
  */
 export function clientIp<
   T extends {

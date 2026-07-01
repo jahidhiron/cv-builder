@@ -1,5 +1,6 @@
 import { ModuleName } from '@/common/base/enums';
-import { VerificationTokenPayload } from '@/modules/auth/interfaces';
+import { SystemLog } from '@/modules/activity-log/decorators';
+import type { VerificationTokenPayload } from '@/modules/auth/interfaces';
 import { UserService } from '@/modules/users/user.service';
 import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
@@ -12,8 +13,6 @@ import { FindOneTokenProvider } from './find-one-token.provider';
  * Shared by `VerifyEmailProvider` and `ResetPasswordProvider`. Looks up the token
  * record by `(userId, token, type, applied=false)`, rejects expired tokens, and
  * atomically marks the token as `applied` so it cannot be reused.
- *
- * @returns The user that owns the token (never `null` — throws on any invalid state).
  */
 @Injectable({ scope: Scope.REQUEST })
 export class VerifyTokenProvider {
@@ -24,14 +23,24 @@ export class VerifyTokenProvider {
     private readonly errorResponse: ErrorResponse,
   ) {}
 
+  /**
+   * Validates and consumes a one-time verification token.
+   *
+   * Steps:
+   * 1. **User lookup** — resolves the user by email; throws 404 if not found.
+   * 2. **Token lookup** — finds the token record by `(userId, token, type, applied=false)`;
+   *    throws 404 if not found (already applied or wrong type).
+   * 3. **Expiry check** — rejects tokens past their `expiredAt` timestamp.
+   * 4. **Consume** — atomically marks the token as `applied` so it cannot be reused.
+   *
+   * @param payload - Token verification input containing `email`, `token`, and `type`.
+   * @returns The {@link User} that owns the token.
+   * @throws {NotFoundException}   When no user exists for the given email, or the token record is not found.
+   * @throws {BadRequestException} On expired or already-applied token.
+   */
+  @SystemLog(ModuleName.Auth)
   async execute(payload: VerificationTokenPayload) {
-    const { user } = await this.userService.findOne({ email: payload.email }, { throwError: false });
-
-    // Use a generic "invalid token" error regardless of whether the user exists
-    // to prevent callers from inferring which email addresses are registered.
-    if (!user) {
-      return this.errorResponse.badRequest({ module: ModuleName.Auth, key: 'invalid-token' });
-    }
+    const { user } = await this.userService.findOne({ email: payload.email });
 
     const tokenRecord = await this.findOneToken.execute({
       userId: user.id,

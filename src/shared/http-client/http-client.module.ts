@@ -1,6 +1,6 @@
 import { HttpModule } from '@nestjs/axios';
 import { DynamicModule, Module } from '@nestjs/common';
-import { HTTP_CLIENT_OPTIONS } from './http-client.constants';
+import { HTTP_CLIENT_OPTIONS } from './constants';
 import { HttpClientService } from './http.service';
 import { HttpClientAsyncOptions } from './interfaces';
 
@@ -23,6 +23,7 @@ export class HttpClientModule {
    *
    * @param options - Static configuration applied to every request made by `HttpClientService`.
    *   Pass an `HttpClientOptions`-shaped object for full type-checking at the call site.
+   * @returns A `DynamicModule` providing `HttpClientService` with the given options.
    */
   static forRoot(options: object = {}): DynamicModule {
     return {
@@ -36,15 +37,8 @@ export class HttpClientModule {
   /**
    * Configure the module asynchronously, e.g. from `ConfigService`.
    *
-   * @example
-   * HttpClientModule.forRootAsync({
-   *   imports: [ConfigModule],
-   *   inject: [ConfigService],
-   *   useFactory: (config: ConfigService) => ({
-   *     baseURL: config.get('API_BASE_URL'),
-   *     timeout: config.get<number>('HTTP_TIMEOUT'),
-   *   }),
-   * })
+   * @param asyncOptions - `useFactory`/`inject`/`imports` describing how to build the options object.
+   * @returns A `DynamicModule` providing `HttpClientService` with the resolved options.
    */
   static forRootAsync(asyncOptions: HttpClientAsyncOptions): DynamicModule {
     return {

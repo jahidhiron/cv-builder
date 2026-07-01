@@ -3,7 +3,6 @@ import { ValidationError } from '@/common/pipes/interfaces';
 /**
  * Converts a camelCase or dot-separated field path into a human-readable label.
  *
- * @example `"firstName"` → `"First name"`, `"address.zipCode"` → `"Address zip code"`
  * @param field - Raw field path from the validation error.
  * @returns Sentence-cased, space-separated label.
  */

@@ -1,3 +1,5 @@
+import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import type { DeepPartial, ObjectLiteral } from 'typeorm';
 import { BaseProvider } from './base.provider';
 
@@ -51,6 +53,7 @@ export abstract class BaseCreateProvider<
    * @param dto - Data transfer object describing the new entity.
    * @returns The newly created entity.
    */
+  @SystemLog(ModuleName.Common)
   override async execute(dto: D): Promise<T> {
     await this.beforeCreate(dto);
     const entity = await this.repo.create(await this.buildPayload(dto));

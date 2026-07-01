@@ -14,12 +14,18 @@ import { Injectable } from '@nestjs/common';
 /**
  * Facade service for the health-check domain.
  *
- * Exposes database and RabbitMQ diagnostic endpoints consumed by the health
- * controller and internal monitoring. Delegates to dedicated providers rather
- * than querying infrastructure directly.
+ * Exposes database and RabbitMQ diagnostic operations consumed by {@link HealthController}.
+ * Delegates all infrastructure queries to dedicated providers rather than querying directly.
+ *
+ * @module Health
  */
 @Injectable()
 export class HealthService {
+  /**
+   * @param dbHealthPro - Provider for comprehensive database health checks.
+   * @param queueStatsPro - Provider for single-queue RabbitMQ statistics.
+   * @param queueListPro - Provider for listing all RabbitMQ queues with metrics.
+   */
   constructor(
     private readonly dbHealthPro: DbHealthProvider,
     private readonly queueStatsPro: QueueStatsProvider,
@@ -27,25 +33,29 @@ export class HealthService {
   ) {}
 
   /**
-   * Get current database health status.
-   * @returns Database health including latency, uptime, threads, and connection stats.
+   * Returns a full database health snapshot including latency, version, uptime,
+   * active connections, QPS, and connection pool limits.
+   *
+   * @returns A {@link DbHealthResponseDto} on success, or an error response on failure.
    */
   dbHealth(): Promise<DbHealthResponseDto> {
     return this.dbHealthPro.execute();
   }
 
   /**
-   * Get statistics for a specific RabbitMQ queue.
-   * @param query Queue name query.
-   * @returns Queue stats including messages, consumers, memory, throughput, and configuration.
+   * Returns stats for a single RabbitMQ queue identified by the query.
+   *
+   * @param query - DTO containing an optional queue name; falls back to the configured default.
+   * @returns A {@link QueueStatsResponseDto} on success, or an error response on failure.
    */
   queueStats(query: QueueStatsQueryDto): Promise<QueueStatsResponseDto> {
     return this.queueStatsPro.execute(query);
   }
 
   /**
-   * Get statistics for all RabbitMQ queues.
-   * @returns List of queues with their stats including messages, consumers, memory, throughput, and configuration.
+   * Returns stats for all registered RabbitMQ queues.
+   *
+   * @returns A {@link QueueListResponseDto} on success, or an error response on failure.
    */
   queueList(): Promise<QueueListResponseDto> {
     return this.queueListPro.execute();

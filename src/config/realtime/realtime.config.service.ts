@@ -9,6 +9,9 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class RealtimeConfigService {
+  /**
+   * @param configService - NestJS config service used to read the `realtime.*` namespace.
+   */
   constructor(private readonly configService: ConfigService) {}
 
   /** Allowed client origin for Socket.IO CORS (e.g. `https://app.example.com`). */

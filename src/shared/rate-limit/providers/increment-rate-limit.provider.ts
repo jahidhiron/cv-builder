@@ -1,6 +1,6 @@
+import type { IncrementResult } from '@/shared/rate-limit/interfaces/increment-result.interface';
 import { RedisService } from '@/shared/redis';
 import { Injectable } from '@nestjs/common';
-import type { IncrementResult } from '@/shared/rate-limit/interfaces/increment-result.interface';
 
 /**
  * Handles all Redis I/O for the fixed-window counter.
@@ -11,8 +11,19 @@ import type { IncrementResult } from '@/shared/rate-limit/interfaces/increment-r
  */
 @Injectable()
 export class IncrementRateLimitProvider {
+  /**
+   * @param redis - Redis client used to increment and inspect the counter.
+   */
   constructor(private readonly redis: RedisService) {}
 
+  /**
+   * Increments the fixed-window counter for the given key, initialising its
+   * TTL on first hit.
+   *
+   * @param key - Redis key identifying the rate-limited counter.
+   * @param windowSecs - Window duration in seconds, used as the TTL on first hit.
+   * @returns The updated {@link IncrementResult} with current count and retry-after seconds.
+   */
   async execute(key: string, windowSecs: number): Promise<IncrementResult> {
     const count = await this.redis.incr(key);
 

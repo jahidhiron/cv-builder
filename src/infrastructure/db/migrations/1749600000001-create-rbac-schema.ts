@@ -16,6 +16,12 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 export class CreateRbacSchema1749600000001 implements MigrationInterface {
   name = 'CreateRbacSchema1749600000001';
 
+  /**
+   * Applies the migration: creates RBAC tables and seeds initial roles and permissions.
+   *
+   * @param queryRunner - TypeORM query runner used to execute SQL statements
+   * @returns Promise that resolves when all statements have executed
+   */
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Roles
     await queryRunner.query(`
@@ -92,6 +98,12 @@ export class CreateRbacSchema1749600000001 implements MigrationInterface {
     `);
   }
 
+  /**
+   * Reverts the migration: drops RBAC tables in dependency order.
+   *
+   * @param queryRunner - TypeORM query runner used to execute SQL statements
+   * @returns Promise that resolves when all statements have executed
+   */
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE "role_permissions"`);
     await queryRunner.query(`DROP TABLE "permissions"`);

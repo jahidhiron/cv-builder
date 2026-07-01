@@ -1,5 +1,9 @@
+import type { FindOneOptions } from '@/common/base';
+import type { UserPayload } from '@/modules/auth/interfaces';
 import { Injectable } from '@nestjs/common';
+import type { FindOptionsWhere } from 'typeorm';
 import { ServerErrorListQueryDto, UpdateServerErrorStatusDto } from './dtos';
+import { ServerError } from './entities/server-error.entity';
 import {
   DeleteServerErrorProvider,
   FindOneServerErrorProvider,
@@ -24,6 +28,13 @@ import type { RequestContext } from './providers/interfaces';
  */
 @Injectable()
 export class ErrorTrackingService {
+  /**
+   * @param trackErrorProvider - Provider that persists a 500-level error and dispatches alerts.
+   * @param findOneServerErrorProvider - Provider for looking up a single server-error record.
+   * @param listServerErrorsProvider - Provider for paginated server-error listings.
+   * @param updateErrorTrackingProvider - Provider for updating a server-error record.
+   * @param deleteServerErrorProvider - Provider for permanently deleting a server-error record.
+   */
   constructor(
     private readonly trackErrorProvider: TrackErrorProvider,
     private readonly findOneServerErrorProvider: FindOneServerErrorProvider,
@@ -35,28 +46,60 @@ export class ErrorTrackingService {
   /**
    * Persist a 500-level error and dispatch a first-occurrence alert in production.
    * Swallows all internal errors — tracking must never affect the HTTP response.
+   *
+   * @param params - The caught exception and the request context it occurred in.
+   * @returns Resolves once tracking completes; never rejects.
    */
   track({ exception, request }: { exception: unknown; request: RequestContext }): Promise<void> {
     return this.trackErrorProvider.execute(exception, request);
   }
 
-  /** Return a paginated list of tracked server errors, optionally filtered by status. */
+  /**
+   * Returns a paginated list of tracked server errors, optionally filtered by status.
+   *
+   * @param dto - Query DTO containing pagination, sorting, and optional status filter.
+   * @returns A paginated list response.
+   */
   list(dto: ServerErrorListQueryDto) {
     return this.listServerErrorsProvider.execute(dto);
   }
 
-  /** Retrieve a single server-error record by ID. Throws 404 when not found. */
-  findOne(id: number) {
-    return this.findOneServerErrorProvider.execute({ id });
+  /**
+   * @param where   - TypeORM filter conditions identifying the server-error record.
+   * @param options - Optional query options; set `throwError: false` to return
+   *                  `{ serverError: null }` instead of throwing when no match is found.
+   * @returns `{ serverError }` — the matched record, or `{ serverError: null }` when
+   *          `throwError` is `false`.
+   * @throws {NotFoundException} When no match is found and `throwError` is not `false`.
+   */
+  async findOne<TThrow extends boolean = true>(
+    where: FindOptionsWhere<ServerError>,
+    options?: FindOneOptions<ServerError, TThrow>,
+  ): Promise<TThrow extends false ? { serverError: ServerError | null } : { serverError: ServerError }> {
+    const serverError =
+      options?.throwError === false
+        ? await this.findOneServerErrorProvider.execute(where, { throwError: false })
+        : await this.findOneServerErrorProvider.execute(where);
+    return { serverError } as never;
   }
 
-  /** Update the lifecycle status of a server-error record. Throws 404 when not found. */
-  updateStatus(id: number, dto: UpdateServerErrorStatusDto) {
-    return this.updateErrorTrackingProvider.execute({ id }, { status: dto.status });
+  /**
+   * @param where - Conditions identifying the server-error record to update.
+   * @param dto   - Validated status-transition payload.
+   * @returns `{ serverError }` containing the updated {@link ServerError} entity.
+   * @throws {NotFoundException} When no record matches `where`.
+   */
+  async updateStatus(where: FindOptionsWhere<ServerError>, dto: UpdateServerErrorStatusDto) {
+    const serverError = await this.updateErrorTrackingProvider.execute(where, { status: dto.status });
+    return { serverError };
   }
 
-  /** Permanently delete a server-error record. Throws 404 when not found. */
-  remove(id: number, currentUserId: number) {
-    return this.deleteServerErrorProvider.execute({ id }, currentUserId, true);
+  /**
+   * @param where       - Conditions identifying the server-error record to delete.
+   * @param currentUser - JWT-extracted payload of the actor performing the deletion.
+   * @throws {NotFoundException} When no record matches `where`.
+   */
+  remove(where: FindOptionsWhere<ServerError>, currentUser: UserPayload) {
+    return this.deleteServerErrorProvider.execute(where, currentUser.id, true);
   }
 }

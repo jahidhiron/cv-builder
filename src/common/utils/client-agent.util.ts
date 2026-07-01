@@ -21,6 +21,5 @@ export function clientAgent<
       ? req.headers['user-agent']
       : '';
 
-  // cap to avoid huge rows
   return ua.length > 512 ? ua.slice(0, 512) : ua;
 }

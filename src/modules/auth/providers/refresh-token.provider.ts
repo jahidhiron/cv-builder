@@ -1,5 +1,6 @@
 import { ModuleName } from '@/common/base/enums';
 import { ConfigService } from '@/config';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { AuthTokenResponse, JwtPayload } from '@/modules/auth/interfaces';
 import { CleanupRefreshTokenProvider } from '@/modules/auth/providers/cleanup-refresh-token.provider';
 import { CreateAuthHistoryProvider } from '@/modules/auth/providers/create-auth-history.provider';
@@ -8,12 +9,12 @@ import { RevokeRefreshTokenProvider } from '@/modules/auth/providers/revoke-refr
 import { UpdateLoginHistoryExpiryProvider } from '@/modules/auth/providers/update-login-history-expiry.provider';
 import { UpdateRefreshTokenProvider } from '@/modules/auth/providers/update-refresh-token.provider';
 import { VerifyRefreshTokenProvider } from '@/modules/auth/providers/verify-refresh-token.provider';
-import { FindPermissionKeysByRoleProvider } from '@/modules/permissions/providers';
+import { PermissionService } from '@/modules/permissions/permission.service';
 import { UserService } from '@/modules/users/user.service';
+import { JwtService } from '@/shared/jwt';
 import { RedisService } from '@/shared/redis/redis.service';
 import { ErrorResponse } from '@/shared/response';
 import { Injectable, Scope } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 
 import { RefreshToken } from '../entities/refresh-token.entity';
 
@@ -43,14 +44,31 @@ export class RefreshTokenProvider {
     private readonly createAuthHistory: CreateAuthHistoryProvider,
     private readonly updateLoginHistoryExpiry: UpdateLoginHistoryExpiryProvider,
     private readonly redisService: RedisService,
-    private readonly findPermissionKeys: FindPermissionKeysByRoleProvider,
+    private readonly permissionService: PermissionService,
   ) {}
 
   /**
+   * Rotates a refresh token and issues a new access/refresh token pair.
+   *
+   * **Steps:**
+   * 1. **Presence check** — rejects immediately if `refreshToken` is empty.
+   * 2. **JWT verification** — verifies the refresh secret; on failure decodes the
+   *    token to extract `sub`/`sessionId` for logout recording, then throws.
+   * 3. **Blacklist check** — rejects tokens that have been explicitly revoked.
+   * 4. **User guards** — rejects deleted or inactive accounts.
+   * 5. **DB validation** — confirms the token exists in the database; a valid JWT
+   *    missing from the DB signals theft — the entire device family is revoked.
+   * 6. **DB expiry** — rejects tokens past their database-level expiry.
+   * 7. **Session cap** — rejects rotation if the absolute session window
+   *    (`maxSessionDays` / `rememberMeMaxSessionDays`) has been exceeded.
+   * 8. **Rotation** — revokes the consumed token, signs a new pair, persists the
+   *    new refresh token, blacklists the old tokens, and updates Redis + login history.
+   *
    * @param refreshToken - The raw refresh JWT string (from request body or cookie).
    * @returns `{ token: { accessToken, refreshToken } }` — the new token pair.
-   * @throws {UnauthorizedException} On missing, expired, blacklisted, or invalid token.
+   * @throws {UnauthorizedException} On missing, expired, blacklisted, stolen, or invalid token.
    */
+  @SystemLog(ModuleName.Auth)
   async execute(refreshToken: string): Promise<AuthTokenResponse> {
     if (!refreshToken) {
       await this.errorResponse.unauthorized({
@@ -59,19 +77,20 @@ export class RefreshTokenProvider {
       });
     }
 
-    let payload: JwtPayload | null = null;
+    // Definite-assignment assertion: the catch block always throws via errorResponse,
+    // so payload is guaranteed to be assigned before any code below the try-catch runs.
+    let payload!: JwtPayload;
 
     try {
-      payload = this.jwtService.verify<JwtPayload>(refreshToken, {
-        secret: this.configService.jwt.refreshSecret,
-      });
+      payload = this.jwtService.verifyRefreshToken<JwtPayload>(refreshToken);
     } catch (err: unknown) {
       const error = err as { name?: string };
-      payload = this.jwtService.decode<JwtPayload>(refreshToken);
-      if (payload?.sub && payload.sessionId) {
+      // decode() is used only for session cleanup on failure — not assigned to payload
+      const decoded = this.jwtService.decode<JwtPayload>(refreshToken);
+      if (decoded?.sub && decoded.sessionId) {
         await this.createAuthHistory.logout({
-          userId: payload.sub,
-          sessionId: payload.sessionId,
+          userId: decoded.sub,
+          sessionId: decoded.sessionId,
           loggedOutAt: new Date(),
         });
       }
@@ -106,11 +125,6 @@ export class RefreshTokenProvider {
       userId: payload.sub,
     });
     if (!dbToken) {
-      // The JWT is valid but the token isn't in the DB — it was already rotated
-      // or revoked. This is a strong signal of refresh token theft (a stolen token
-      // was used after the legitimate holder had already rotated it).
-      // Revoke the entire device family and wipe its Redis sessions to force
-      // re-authentication on all devices in that family.
       if (payload.familyId) {
         await this.revokeRefreshToken.execute(
           { userId: payload.sub, familyId: payload.familyId },
@@ -133,28 +147,23 @@ export class RefreshTokenProvider {
       });
     }
 
-    // Enforce absolute session cap: continuous rotation cannot extend a session beyond `maxSessionDays`.
     const firstIssuedAt =
       payload.firstIssuedAt ?? dbToken!.sessionStartedAt?.getTime() ?? Date.now();
     const rememberMe = payload.rememberMe === true;
     const maxSessionDays: number = rememberMe
       ? this.configService.jwt.rememberMeMaxSessionDays
       : this.configService.jwt.maxSessionDays;
-    const refreshTtl: number = rememberMe
-      ? this.configService.jwt.rememberMeRefreshTokenExpiredIn
-      : this.configService.jwt.refreshTokenExpiredIn;
+    const refreshTtl = this.jwtService.getRefreshTtl(rememberMe);
     if (Date.now() - firstIssuedAt > maxSessionDays * 24 * 60 * 60 * 1000) {
       await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'session-expired' });
     }
 
-    await this.updateRefreshToken.execute({ id: dbToken!.id }, {
-      revokedAt: new Date(),
-      revokedReason: 'refresh-replaced',
-    } as Partial<RefreshToken>);
+    await this.updateRefreshToken.execute(
+      { id: dbToken!.id },
+      { revokedAt: new Date(), revokedReason: 'refresh-replaced' } as Partial<RefreshToken>,
+    );
 
-    const permissions = user!.roleId
-      ? await this.findPermissionKeys.execute({ roleId: user!.roleId })
-      : [];
+    const { permissions } = await this.permissionService.findPermissionKeys(user!.roleId);
 
     const newPayload: JwtPayload = {
       sub: payload.sub,
@@ -164,19 +173,12 @@ export class RefreshTokenProvider {
       permissions,
       familyId: dbToken!.familyId ?? payload.familyId,
       sessionId: payload.sessionId,
-      // Preserve the original session start time and rememberMe flag through every rotation
       firstIssuedAt,
       rememberMe,
     };
 
-    const accessToken = this.jwtService.sign(newPayload, {
-      secret: this.configService.jwt.accessSecret,
-      expiresIn: this.configService.jwt.accessTokenExpiredIn,
-    });
-    const newRefreshToken = this.jwtService.sign(newPayload, {
-      secret: this.configService.jwt.refreshSecret,
-      expiresIn: refreshTtl,
-    });
+    const accessToken = this.jwtService.signAccessToken(newPayload);
+    const newRefreshToken = this.jwtService.signRefreshToken(newPayload, rememberMe);
 
     await this.createRefreshToken.execute({
       token: newRefreshToken,
@@ -196,14 +198,10 @@ export class RefreshTokenProvider {
         this.redisService.set(
           `blacklist:${oldTokens.accessToken}`,
           '1',
-          this.configService.jwt.accessTokenExpiredIn,
+          this.jwtService.getAccessTtl(),
         ),
       oldTokens?.refreshToken &&
-        this.redisService.set(
-          `blacklist:${oldTokens.refreshToken}`,
-          '1',
-          refreshTtl,
-        ),
+        this.redisService.set(`blacklist:${oldTokens.refreshToken}`, '1', refreshTtl),
     ]);
     // Preserve existing session metadata (ip, userAgent, createdAt), only rotate tokens
     const existing = await this.redisService.hgetall<Record<string, string>>(redisKey);

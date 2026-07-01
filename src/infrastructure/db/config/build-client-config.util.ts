@@ -22,7 +22,7 @@ export function buildClientConfig(): ClientConfigResult {
     const parsed = new URL(url);
     const dbName = parsed.pathname.replace(/^\//, '') || 'cv_builder';
 
-    // Substitute the target DB with the maintenance DB for the initial connection.
+    // Connect to maintenance DB; the target DB may not exist yet.
     parsed.pathname = '/postgres';
 
     return { config: { connectionString: parsed.toString() }, dbName };

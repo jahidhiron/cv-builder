@@ -1,3 +1,5 @@
+import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import type { CleanupRefreshTokenParams } from '@/modules/auth/providers/interfaces';
 import { RefreshTokenRepository } from '@/modules/auth/repositories';
 import { Injectable } from '@nestjs/common';
@@ -10,11 +12,19 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class CleanupRefreshTokenProvider {
-  constructor(private readonly refreshTokenRepo: RefreshTokenRepository) {}
+  constructor(
+    private readonly refreshTokenRepo: RefreshTokenRepository,
+  ) {}
 
   /**
-   * @param params.userId - ID of the user whose stale tokens should be deleted.
+   * Deletes all expired (`expires_at <= now`) and revoked (`revoked_at IS NOT NULL`)
+   * refresh tokens belonging to the given user.
+   *
+   * @param params          - Cleanup parameters.
+   * @param params.userId   - ID of the user whose stale tokens should be deleted.
+   * @returns               Resolves when the DELETE completes.
    */
+  @SystemLog(ModuleName.Auth)
   async execute({ userId }: CleanupRefreshTokenParams): Promise<void> {
     await this.refreshTokenRepo.rawQuery(
       `DELETE FROM refresh_tokens

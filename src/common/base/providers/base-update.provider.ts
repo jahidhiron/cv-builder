@@ -1,3 +1,5 @@
+import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import type { DeepPartial, FindOptionsWhere, ObjectLiteral } from 'typeorm';
 import { BaseProvider } from './base.provider';
 
@@ -55,6 +57,7 @@ export abstract class BaseUpdateProvider<
    * @param dto   - Data transfer object with the fields to update.
    * @returns The updated entity.
    */
+  @SystemLog(ModuleName.Common)
   override async execute(where: FindOptionsWhere<T>, dto: D): Promise<T> {
     const entity = await this.findOne(where);
     if ('isDeleted' in entity && (entity as unknown as { isDeleted: boolean }).isDeleted) {

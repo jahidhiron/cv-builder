@@ -1,5 +1,5 @@
-import { ModuleName } from '@/common/base/enums';
 import { BasePaginatedListProvider } from '@/common/base';
+import { ModuleName } from '@/common/base/enums';
 import { PaginatedListParams } from '@/common/base/repositories/interfaces';
 import { UserPayload } from '@/modules/auth/interfaces';
 import { UserListQueryDto } from '@/modules/users/dtos';
@@ -11,8 +11,15 @@ import { REQUEST } from '@nestjs/core';
 import type { Request } from 'express';
 
 /**
- * Returns a paginated list of users, searching across `name` and `email`.
- * Excludes the current authenticated user from results via the request context.
+ * Returns a paginated, searchable list of {@link User} records.
+ *
+ * Extends {@link BasePaginatedListProvider} with two user-specific behaviours:
+ * - **Full-text search** across the `name` and `email` columns.
+ * - **Self-exclusion** — the authenticated user is stripped from results so
+ *   admin UIs never show the caller in the list they manage.
+ *
+ * Pagination and filtering parameters are forwarded from {@link UserListQueryDto}
+ * via the base `buildParams` implementation.
  */
 @Injectable({ scope: Scope.REQUEST })
 export class ListUsersProvider extends BasePaginatedListProvider<User, UserListQueryDto> {
@@ -24,6 +31,17 @@ export class ListUsersProvider extends BasePaginatedListProvider<User, UserListQ
     super(ModuleName.User, repo, errorResponse);
   }
 
+  /**
+   * Builds the repository query parameters for a paginated user listing.
+   *
+   * Merges the base pagination params from the DTO with a fixed
+   * `searchBy: ['name', 'email']` and, when the request carries an
+   * authenticated user, a `$ne` filter that excludes their own record.
+   *
+   * @param dto - Validated query parameters (page, limit, search term, etc.).
+   * @returns The fully assembled {@link PaginatedListParams} passed to the
+   *          repository.
+   */
   protected override buildParams(dto: UserListQueryDto): PaginatedListParams<User> {
     const currentUserId = this.request.user?.id;
     return {

@@ -1,3 +1,4 @@
+/** HTTP methods usable when documenting a route's Swagger response examples. */
 export enum HttpMethod {
   GET = 'GET',
   POST = 'POST',

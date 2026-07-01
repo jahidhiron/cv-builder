@@ -22,12 +22,6 @@ import type { ScriptLogger } from './interfaces';
  *                  (e.g. `'CreateDatabase'` → `[CreateDatabase]`).
  * @returns A {@link ScriptLogger} backed by Winston console + file transports.
  *
- * @example
- * ```ts
- * const logger = createScriptLogger('Seed');
- * logger.info('Seeding roles...');
- * logger.error('Seed failed', { error: err.message });
- * ```
  */
 export function createScriptLogger(context: string): ScriptLogger {
   const w = winston.createLogger({

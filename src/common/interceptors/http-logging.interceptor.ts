@@ -16,8 +16,19 @@ import { Observable, tap } from 'rxjs';
  */
 @Injectable()
 export class HttpLoggingInterceptor implements NestInterceptor {
+  /**
+   * @param logger - Application logger used to emit the per-request summary line.
+   */
   constructor(private readonly logger: AppLogger) {}
 
+  /**
+   * Records the request start time and logs one summary line once the
+   * handler completes, whether it succeeds or throws.
+   *
+   * @param context - The current execution context.
+   * @param next - The next handler in the interceptor chain.
+   * @returns An `Observable` that emits the handler's response unchanged.
+   */
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<Request>();
     const start = Date.now();

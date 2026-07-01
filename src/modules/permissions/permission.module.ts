@@ -1,8 +1,12 @@
+import { ActivityLogModule } from '@/modules/activity-log/activity-log.module';
 import { ConfigModule } from '@/config';
 import {
   AssignRolePermissionsProvider,
+  BulkDeletePermissionsProvider,
+  BulkRemoveRolePermissionsProvider,
   CreatePermissionProvider,
   DeletePermissionProvider,
+  FindAllPermissionsProvider,
   FindOnePermissionProvider,
   FindPermissionKeysByRoleProvider,
   FindRolePermissionsByRoleProvider,
@@ -22,30 +26,34 @@ import { PermissionService } from './permission.service';
  * Feature module that wires up all permission-management concerns:
  * CRUD operations on permissions and role–permission assignments.
  *
- * Exports repositories and the three role–permission providers so that
- * `RoleModule` can assign/revoke permissions without importing the full module.
+ * Exports {@link PermissionService}, both repositories, and the role–permission
+ * providers ({@link AssignRolePermissionsProvider}, {@link RemoveRolePermissionProvider},
+ * {@link ListRolePermissionsProvider}, {@link FindPermissionKeysByRoleProvider})
+ * so that {@link RoleModule} can manage role–permission relationships without
+ * importing the full module.
+ *
+ * @module Permission
  */
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, ActivityLogModule],
   controllers: [PermissionController],
   providers: [
-    // Repositories
     PermissionRepository,
     RolePermissionRepository,
-    // CRUD providers (extend base providers)
     FindOnePermissionProvider,
     CreatePermissionProvider,
     UpdatePermissionProvider,
     DeletePermissionProvider,
     ListPermissionsProvider,
-    // Specialised role–permission providers
     ListRolePermissionsProvider,
     AssignRolePermissionsProvider,
     RemoveRolePermissionProvider,
+    BulkRemoveRolePermissionsProvider,
+    BulkDeletePermissionsProvider,
+    FindAllPermissionsProvider,
     FindPermissionKeysByRoleProvider,
     FindRolePermissionsByRoleProvider,
     UpsertPermissionProvider,
-    // Service
     PermissionService,
   ],
   exports: [
@@ -54,8 +62,10 @@ import { PermissionService } from './permission.service';
     ListRolePermissionsProvider,
     AssignRolePermissionsProvider,
     RemoveRolePermissionProvider,
+    BulkRemoveRolePermissionsProvider,
+    BulkDeletePermissionsProvider,
+    FindAllPermissionsProvider,
     FindPermissionKeysByRoleProvider,
-    UpsertPermissionProvider,
     PermissionService,
   ],
 })

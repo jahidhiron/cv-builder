@@ -7,8 +7,6 @@ import type { SendMailOptions } from './send-mail.interface';
  * in {@link MailModule} to make it the active provider. Consumers always depend
  * on this interface, never on a concrete class.
  *
- * @example
- * ```ts
  * @Injectable()
  * export class SendGridService implements MailProvider {
  *   async send(options: SendMailOptions): Promise<void> { ... }

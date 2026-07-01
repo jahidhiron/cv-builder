@@ -12,6 +12,13 @@ export interface AppResponse<T extends object = any> {
   method: string;
   /** Request path (e.g. `"/v1/auth/signin"`). */
   path: string;
+  /**
+   * UUID that correlates this response with all rows in request_logs,
+   * system_activity_logs, user_activity_logs, and external_call_logs that
+   * were produced during this request. Clients include this in bug reports
+   * so the team can pull the full trace from the DB.
+   */
+  correlationId: string;
   /** ISO 8601 timestamp of when the response was built. */
   timestamp: string;
   /** `true` for successful operations, `false` for errors. */

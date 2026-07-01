@@ -11,12 +11,6 @@ import { SwaggerResponseOptions } from '../interfaces';
  * @param options  - HTTP method, status code, path, and message for the schema.
  * @param isArray  - When `true`, documents `data` as an array.
  *
- * @example
- * ```ts
- * \@SwaggerApiSuccessResponse(UserDto, { method: 'GET', status: 'OK', statusCode: 200, path: '/v1/users/:id', message: 'User retrieved.' })
- * \@Get(':id')
- * findOne(@Param('id') id: number) { … }
- * ```
  */
 export function SwaggerApiSuccessResponse<T>(
   DataType: (new () => T) | null,

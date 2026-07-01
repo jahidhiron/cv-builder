@@ -5,7 +5,7 @@
  */
 export interface AuthHistoryPayload {
   userId: number;
-  sessionId: string;
+  sessionId?: string;
   familyId?: string;
   loggedInAt?: Date;
   loggedOutAt?: Date;

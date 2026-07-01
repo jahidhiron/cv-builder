@@ -17,6 +17,12 @@ export class DatabaseHealthService implements OnModuleInit {
     private readonly logger: AppLogger,
   ) {}
 
+  /**
+   * Runs a `SELECT 1` health check against the database on module initialisation.
+   * Terminates the process with exit code 1 if the connection cannot be established.
+   *
+   * @returns Promise that resolves when the health check passes
+   */
   async onModuleInit() {
     try {
       await this.dataSource.query('SELECT 1');

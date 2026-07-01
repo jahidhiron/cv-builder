@@ -1,3 +1,4 @@
+/** Identifies the module/domain a response or log entry originates from. */
 export enum ModuleName {
   App = 'app',
   Common = 'common',
@@ -9,4 +10,5 @@ export enum ModuleName {
   User = 'users',
   RateLimit = 'rate-limit',
   ErrorTracking = 'error-tracking',
+  ActivityLog = 'activity-log',
 }

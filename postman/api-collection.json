@@ -402,6 +402,62 @@
           "response": []
         },
         {
+          "name": "create",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Jane Doe\",\n    \"email\": \"jane@example.com\",\n    \"roleId\": 1,\n    \"password\": \"Password@123\",\n    \"sendEmail\": true\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "me",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update-me",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"John Updated\",\n    \"email\": \"john.updated@example.com\"\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "detail",
           "protocolProfileBehavior": {
             "disableBodyPruning": true
@@ -842,6 +898,190 @@
               "raw": "{{baseUrl}}/error-tracking/1",
               "host": ["{{baseUrl}}"],
               "path": ["error-tracking", "1"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "activity-log",
+      "item": [
+        {
+          "name": "list",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "GET /users",
+                  "disabled": true
+                },
+                {
+                  "key": "sortBy",
+                  "value": "[{\"column\":\"createdAt\",\"order\":\"desc\"}]",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "list-users",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "ProfileUpdated",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "success",
+                  "description": "success | failed | pending",
+                  "disabled": true
+                },
+                {
+                  "key": "sortBy",
+                  "value": "[{\"column\":\"createdAt\",\"order\":\"desc\"}]",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "list-system",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log/system",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log", "system"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "UserService",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "success",
+                  "description": "success | failed | pending",
+                  "disabled": true
+                },
+                {
+                  "key": "module",
+                  "value": "user",
+                  "disabled": true
+                },
+                {
+                  "key": "sortBy",
+                  "value": "[{\"column\":\"executedAt\",\"order\":\"desc\"}]",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "user-detail",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log", "users", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "system-detail",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log/system/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log", "system", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "detail",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log", "1"]
             }
           },
           "response": []

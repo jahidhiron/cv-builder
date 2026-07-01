@@ -1,3 +1,5 @@
+import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { RefreshToken } from '@/modules/auth/entities/refresh-token.entity';
 import type { VerifyRefreshTokenParams } from '@/modules/auth/providers/interfaces';
 import { RefreshTokenRepository } from '@/modules/auth/repositories';
@@ -25,6 +27,7 @@ export class VerifyRefreshTokenProvider {
    * @param params.userId - Owner of the token (used to scope the lookup).
    * @returns The matching `RefreshToken` record, or `null` if not found.
    */
+  @SystemLog(ModuleName.Auth)
   async execute({ token, userId }: VerifyRefreshTokenParams): Promise<RefreshToken | null> {
     const tokens = await this.refreshTokenRepo.findMany({ userId, revokedAt: IsNull() });
 

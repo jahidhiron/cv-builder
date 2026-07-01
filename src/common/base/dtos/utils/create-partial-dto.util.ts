@@ -15,10 +15,6 @@ import { Type } from '@nestjs/common';
  * @param dto - The source DTO class to make partial.
  * @returns A new class that is a fully-optional, Swagger-documented version of `dto`.
  *
- * @example
- * ```ts
- * export class UpdateUserDto extends CreatePartialDto(CreateUserDto) {}
- * ```
  */
 export function CreatePartialDto<T extends object>(dto: Type<T>) {
   const partial = PartialType(dto);

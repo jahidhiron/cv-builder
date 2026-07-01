@@ -1,7 +1,7 @@
+import { ActivityLogModule } from '@/modules/activity-log/activity-log.module';
 import { ConfigModule } from '@/config';
 import {
   ApplyTokenProvider,
-  AuditLogProvider,
   ChangePasswordProvider,
   CheckPasswordHistoryProvider,
   CleanupRefreshTokenProvider,
@@ -33,7 +33,6 @@ import {
   LoginHistoryRepository,
   PasswordHistoryRepository,
   RefreshTokenRepository,
-  SecurityAuditLogRepository,
   VerificationTokenRepository,
 } from '@/modules/auth/repositories';
 import { PermissionModule } from '@/modules/permissions/permission.module';
@@ -41,11 +40,19 @@ import { RoleModule } from '@/modules/roles/role.module';
 import { UserModule } from '@/modules/users/user.module';
 import { SharedModule } from '@/shared';
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthGuard, JwtAuthGuard } from './guards';
 
+/**
+ * AuthModule wires together all authentication and authorization concerns:
+ * JWT issuance/validation, refresh-token lifecycle, verification emails,
+ * password history enforcement, session management, and OAuth (Google).
+ *
+ * Exported symbols (`AuthService`, `AuthGuard`, `JwtAuthGuard`) are consumed
+ * by other feature modules that need to protect their routes or inspect the
+ * current user identity. `JwtService` is available globally via `SharedModule`.
+ */
 @Module({
   imports: [
     SharedModule,
@@ -53,7 +60,7 @@ import { AuthGuard, JwtAuthGuard } from './guards';
     UserModule,
     PermissionModule,
     ConfigModule,
-    JwtModule.register({}),
+    ActivityLogModule,
   ],
   controllers: [AuthController],
   providers: [
@@ -66,7 +73,6 @@ import { AuthGuard, JwtAuthGuard } from './guards';
     RefreshTokenRepository,
     LoginHistoryRepository,
     PasswordHistoryRepository,
-    SecurityAuditLogRepository,
     // Token infrastructure
     InvalidatePreviousTokenProvider,
     FindOneTokenProvider,
@@ -81,7 +87,6 @@ import { AuthGuard, JwtAuthGuard } from './guards';
     RevokeRefreshTokenProvider,
     CreateAuthHistoryProvider,
     // Business logic
-    AuditLogProvider,
     SignupProvider,
     SigninProvider,
     GoogleSigninProvider,
@@ -98,6 +103,6 @@ import { AuthGuard, JwtAuthGuard } from './guards';
     ListSessionsProvider,
     RevokeSessionProvider,
   ],
-  exports: [AuthService, AuthGuard, JwtAuthGuard, JwtModule],
+  exports: [AuthService, AuthGuard, JwtAuthGuard],
 })
 export class AuthModule {}

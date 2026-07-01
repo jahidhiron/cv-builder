@@ -1,5 +1,6 @@
 import { HttpMethod } from '../enums';
 
+/** Keys of `HTTP_STATUS` supported by the error response builders. */
 export type StatusKey =
   | 'BAD_REQUEST'
   | 'PAYMENT_REQUIRED'
@@ -17,6 +18,7 @@ export type StatusKey =
   | 'SERVICE_UNAVAILABLE'
   | 'GATEWAY_TIMEOUT';
 
+/** Single named example entry within a multi-example Swagger error response. */
 export type ExampleItem = {
   summary?: string;
   message?: string;
@@ -24,6 +26,7 @@ export type ExampleItem = {
   data?: unknown;
 };
 
+/** Arguments for an error response documented with a single example. */
 export type SingleExampleArgs = {
   path: string;
   method: HttpMethod;
@@ -32,10 +35,12 @@ export type SingleExampleArgs = {
   errors?: ExampleItem['errors'];
 };
 
+/** Arguments for an error response documented with multiple named examples. */
 export type MultipleExamplesArgs = {
   path: string;
   method: HttpMethod;
   examples: Record<string, ExampleItem>;
 };
 
+/** Arguments accepted by `buildErrorSchema` and the pre-bound `*Response` helpers. */
 export type ResponseArgs = SingleExampleArgs | MultipleExamplesArgs;

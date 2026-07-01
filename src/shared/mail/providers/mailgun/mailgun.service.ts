@@ -1,5 +1,7 @@
+import { ModuleName } from '@/common/base';
 import { ConfigService } from '@/config';
 import { AppLogger } from '@/config/logger';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { Injectable } from '@nestjs/common';
 import FormData from 'form-data';
 import * as fs from 'fs';
@@ -36,6 +38,10 @@ export class MailgunService implements MailProvider {
   /** Cache of absolute template path → compiled Handlebars delegate. */
   private readonly templateCache = new Map<string, Handlebars.TemplateDelegate>();
 
+  /**
+   * @param configService - Supplies Mailgun credentials and default from-address config.
+   * @param logger - Application logger used for warnings, errors, and send confirmations.
+   */
   constructor(
     private readonly configService: ConfigService,
     private readonly logger: AppLogger,
@@ -45,7 +51,9 @@ export class MailgunService implements MailProvider {
     const domain = mail.mailgunDomain;
 
     if (!apiKey || !domain) {
-      this.logger.warn('MAILGUN_API_KEY or MAILGUN_DOMAIN is not configured. Email sending will be disabled.');
+      this.logger.warn(
+        'MAILGUN_API_KEY or MAILGUN_DOMAIN is not configured. Email sending will be disabled.',
+      );
     } else {
       const mailgun = new Mailgun(FormData);
       this.mg = mailgun.client({ username: 'api', key: apiKey });
@@ -70,6 +78,7 @@ export class MailgunService implements MailProvider {
    *
    * @param options - Recipient, subject, and either a template reference or raw HTML.
    */
+  @SystemLog(ModuleName.Shared)
   async send(options: SendMailOptions): Promise<void> {
     if (!this.mg || !this.domain) {
       this.logger.warn('Mailgun not initialised — skipping email send.');
@@ -118,7 +127,11 @@ export class MailgunService implements MailProvider {
    * @param context      - Data passed to the Handlebars compiler.
    * @returns Rendered HTML string.
    */
-  private renderTemplate(moduleName: string, templateName: string, context: Record<string, unknown>): string {
+  private renderTemplate(
+    moduleName: string,
+    templateName: string,
+    context: Record<string, unknown>,
+  ): string {
     const templatePath = this.resolveTemplatePath(moduleName, templateName);
     return this.getCompiledTemplate(templatePath)(context);
   }
@@ -142,7 +155,7 @@ export class MailgunService implements MailProvider {
       throw new Error(`Module folder "${moduleName}" not found under ${this.templatesBaseDir}`);
     }
 
-    const templatePath = path.join(modulePath, 'templates', 'emails', `${templateName}.hbs`);
+    const templatePath = path.join(modulePath, 'mail', templateName, `${templateName}.hbs`);
     if (!fs.existsSync(templatePath)) {
       this.modulePathCache.delete(moduleName);
       throw new Error(`Template file not found: ${templatePath}`);

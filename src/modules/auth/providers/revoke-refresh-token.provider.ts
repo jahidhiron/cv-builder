@@ -1,3 +1,5 @@
+import { ModuleName } from '@/common/base/enums';
+import { SystemLog } from '@/modules/activity-log/decorators';
 import { RefreshToken } from '@/modules/auth/entities/refresh-token.entity';
 import type { RevokeRefreshTokenPayload } from '@/modules/auth/providers/interfaces';
 import { RefreshTokenRepository } from '@/modules/auth/repositories';
@@ -11,12 +13,23 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class RevokeRefreshTokenProvider {
-  constructor(private readonly refreshTokenRepo: RefreshTokenRepository) {}
+  constructor(
+    private readonly refreshTokenRepo: RefreshTokenRepository,
+  ) {}
 
   /**
-   * @param where          - At least one of `userId` or `familyId` must be provided.
-   * @param payload.reason - Human-readable reason stored on every revoked row.
+   * Revokes all active refresh tokens matching `where` by stamping `revoked_at`
+   * and recording a human-readable reason on every affected row.
+   *
+   * At least one of `where.userId` or `where.familyId` must be provided;
+   * omitting both would silently update the entire table.
+   *
+   * @param where           - Filter criteria; supply `userId`, `familyId`, or both.
+   * @param options         - Revocation metadata.
+   * @param options.reason  - Human-readable reason stored on every revoked row.
+   * @returns               Resolves when the bulk UPDATE completes.
    */
+  @SystemLog(ModuleName.Auth)
   async execute(
     where: Partial<Pick<RefreshToken, 'userId' | 'familyId'>>,
     { reason }: RevokeRefreshTokenPayload,

@@ -1,5 +1,6 @@
 ﻿/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { HTTP_STATUS } from './constants';
+import { ActivityLogContext } from '@/modules/activity-log/context';
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import type { Request } from 'express';
@@ -11,7 +12,7 @@ import { ResponseParams } from './types';
  * Core request-scoped service that assembles {@link AppResponse} envelopes.
  *
  * Consumed internally by {@link SuccessResponse} and {@link ErrorResponse}.
- * Feature modules should not inject this service directly â€” use the typed helpers instead.
+ * Feature modules should not inject this service directly -- use the typed helpers instead.
  *
  * Being request-scoped ensures that `method`, `path`, and the resolved i18n language
  * are always derived from the current HTTP request.
@@ -70,6 +71,7 @@ export class ResponseService {
    * @param status  - Key from the `HTTP_STATUS` map (e.g. `"OK"`, `"NOT_FOUND"`).
    * @param message - Resolved message string.
    * @param rest    - Optional additional payload spread into `data`.
+   * @returns Fully populated {@link AppResponse} envelope.
    */
   private buildResponse<T extends object = any>(
     success: boolean,
@@ -87,6 +89,7 @@ export class ResponseService {
       status: statusText,
       statusCode,
       path: reqPath,
+      correlationId: ActivityLogContext.get().requestId,
       timestamp: new Date().toISOString(),
       message,
     };

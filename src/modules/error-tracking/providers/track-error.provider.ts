@@ -1,5 +1,7 @@
 import { ModuleName } from '@/common/base/enums';
 import { ConfigService } from '@/config';
+import { SystemLog } from '@/modules/activity-log/decorators';
+import { buildServerErrorAlertEmail } from '@/modules/error-tracking/mail';
 import { MailService } from '@/shared/mail/mail.service';
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'crypto';
@@ -17,6 +19,12 @@ import type { RequestContext } from './interfaces';
  */
 @Injectable()
 export class TrackErrorProvider {
+  /**
+   * @param upsertProvider - Provider that upserts the error fingerprint and returns its occurrence count.
+   * @param updateProvider - Provider used to stamp `emailSentAt` once the alert email is sent.
+   * @param mailService    - Shared mail service used to dispatch the alert email.
+   * @param configService  - Config service consulted for the production flag and mail/app settings.
+   */
   constructor(
     private readonly upsertProvider: UpsertServerErrorProvider,
     private readonly updateProvider: UpdateErrorTrackingProvider,
@@ -24,6 +32,16 @@ export class TrackErrorProvider {
     private readonly configService: ConfigService,
   ) {}
 
+  /**
+   * Persists the caught exception as a server-error record and, on its first
+   * occurrence in production, dispatches an admin alert email.
+   *
+   * @param exception - The caught exception (or non-`Error` thrown value).
+   * @param request   - Request context (`method`, `url`) the exception occurred in.
+   * @returns Resolves once tracking completes; never rejects — all internal
+   *          errors are swallowed so tracking can never affect the HTTP response.
+   */
+  @SystemLog(ModuleName.ErrorTracking)
   async execute(exception: unknown, request: RequestContext): Promise<void> {
     try {
       const errorName = exception instanceof Error ? exception.constructor.name : 'UnknownError';
@@ -52,14 +70,14 @@ export class TrackErrorProvider {
     }
   }
 
-  /** Strips control characters and collapses whitespace so the string is safe for an email subject line. */
-  private sanitizeSubject(text: string): string {
-    return text
-      .replace(/\p{Cc}/gu, ' ')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
-  }
-
+  /**
+   * Derives a stable SHA-256 fingerprint from the error class, message, and top stack frame.
+   *
+   * @param errorName - Constructor name of the thrown error.
+   * @param message   - Error message.
+   * @param stack     - Stack trace, or `null` when unavailable.
+   * @returns A 64-character hex digest used to deduplicate repeated occurrences.
+   */
   private buildFingerprint(errorName: string, message: string, stack: string | null): string {
     const topFrame = stack?.split('\n')[1]?.trim() ?? '';
     return createHash('sha256')
@@ -68,6 +86,16 @@ export class TrackErrorProvider {
       .slice(0, 64);
   }
 
+  /**
+   * Sends the first-occurrence admin alert email. No-ops when no support
+   * inbox is configured.
+   *
+   * @param errorName  - Constructor name of the thrown error.
+   * @param message    - Error message.
+   * @param stack      - Stack trace, or `null` when unavailable.
+   * @param request    - Request context (`method`, `url`) the exception occurred in.
+   * @param occurredAt - Timestamp of the first occurrence.
+   */
   private async sendAdminAlert(
     errorName: string,
     message: string,
@@ -78,21 +106,11 @@ export class TrackErrorProvider {
     const { app, mail } = this.configService;
     if (!mail.supportEmail) return;
 
-    await this.mailService.sendEmail({
-      module: ModuleName.ErrorTracking,
-      template: 'server-error-alert',
-      to: mail.supportEmail,
-      subject: `[${app.companyName} Server Error] ${this.sanitizeSubject(errorName)}: ${this.sanitizeSubject(message).slice(0, 80)}`,
-      context: {
-        errorName,
-        message,
-        method: request.method,
-        path: request.url,
-        occurredAt: occurredAt.toISOString(),
-        stack: stack ?? null,
-        logoUrl: mail.logoUrl,
-        supportEmail: mail.supportEmail,
-      },
-    });
+    await this.mailService.sendEmail(
+      buildServerErrorAlertEmail(
+        { errorName, message, method: request.method, path: request.url, stack, occurredAt },
+        { companyName: app.companyName, supportEmail: mail.supportEmail, logoUrl: mail.logoUrl },
+      ),
+    );
   }
 }

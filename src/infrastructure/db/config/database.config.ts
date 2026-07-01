@@ -7,6 +7,7 @@ import { getBaseDatabaseConfig } from './base-database.config';
  * to {@link getBaseDatabaseConfig} and allowing future module-level overrides.
  *
  * @param options - Resolved app and db config services plus the application logger.
+ * @returns `TypeOrmModuleOptions` ready for `TypeOrmModule.forRootAsync`
  */
 export const getDatabaseConfig = (options: DatabaseOptions): TypeOrmModuleOptions => {
   const baseConfig = getBaseDatabaseConfig(options);

@@ -1,5 +1,10 @@
 import { registerAs } from '@nestjs/config';
 
+/**
+ * Registers the `jwt` config namespace with signing secrets, string-form
+ * expiries, and numeric-seconds expiries (including rememberMe variants)
+ * read from the corresponding `JWT_*` environment variables.
+ */
 export default registerAs('jwt', () => ({
   accessSecret: process.env.JWT_ACCESS_SECRET,
   refreshSecret: process.env.JWT_REFRESH_SECRET,

@@ -9,6 +9,9 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class GoogleConfigService {
+  /**
+   * @param configService - NestJS config service used to read the `google.*` namespace.
+   */
   constructor(private readonly configService: ConfigService) {}
 
   /** Google OAuth 2.0 client ID (`GOOGLE_CLIENT_ID`). */

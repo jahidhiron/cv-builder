@@ -1,26 +1,27 @@
 import { ModuleName } from '@/common/base/enums';
-import { getDeviceFingerprint } from '@/common/utils';
-import { ConfigService } from '@/config';
-import { SecurityAuditEvent } from '@/modules/auth/entities/security-audit-log.entity';
+import { clientAgent, clientIp, getDeviceFingerprint } from '@/common/utils';
+import { ActivityLogService } from '@/modules/activity-log/activity-log.service';
+import { SystemLog } from '@/modules/activity-log/decorators';
+import { LogStatus } from '@/modules/activity-log/enums';
+import { AuthAction } from '@/modules/auth/enums/auth-action.enum';
 import { UserRole } from '@/modules/auth/enums';
 import { JwtPayload } from '@/modules/auth/interfaces';
-import { AuditLogProvider } from '@/modules/auth/providers/audit-log.provider';
 import { CleanupRefreshTokenProvider } from '@/modules/auth/providers/cleanup-refresh-token.provider';
 import { CreateAuthHistoryProvider } from '@/modules/auth/providers/create-auth-history.provider';
 import { CreateRefreshTokenProvider } from '@/modules/auth/providers/create-refresh-token.provider';
 import { NewDeviceNotificationProvider } from '@/modules/auth/providers/new-device-notification.provider';
 import { RevokeRefreshTokenProvider } from '@/modules/auth/providers/revoke-refresh-token.provider';
-import { FindPermissionKeysByRoleProvider } from '@/modules/permissions/providers';
+import { PermissionService } from '@/modules/permissions/permission.service';
 import { RoleService } from '@/modules/roles/role.service';
 import { User } from '@/modules/users/entities/user.entity';
 import { UserService } from '@/modules/users/user.service';
 import { GoogleService } from '@/shared/google';
 import { HashService } from '@/shared/hash/hash.service';
+import { JwtService } from '@/shared/jwt';
 import { RedisService } from '@/shared/redis/redis.service';
 import { ErrorResponse } from '@/shared/response';
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import { GoogleSigninDto } from '../dtos';
 
@@ -32,7 +33,8 @@ import { GoogleSigninDto } from '../dtos';
  * 2. Looks up or creates the local user record.
  *    - New users: assigned the default `User` role; `emailVerified` is set to `true`.
  *    - Existing users: checks active/non-deleted state; backfills `googleId` if missing.
- * 3. Cleans up stale Redis sessions and revokes existing tokens for the same device family.
+ * 3. Cleans up stale Redis sessions, revokes existing tokens for the same device family,
+ *    and closes any open login-history rows for that device.
  * 4. Issues a new access/refresh JWT pair, persists the refresh token, and caches the
  *    session in Redis — matching the same pattern as email/password sign-in.
  * 5. Records an auth-history entry.
@@ -46,16 +48,15 @@ export class GoogleSigninProvider {
     private readonly jwtService: JwtService,
     private readonly hashService: HashService,
     private readonly errorResponse: ErrorResponse,
-    private readonly configService: ConfigService,
     private readonly revokeRefreshToken: RevokeRefreshTokenProvider,
     private readonly createRefreshToken: CreateRefreshTokenProvider,
     private readonly cleanupRefreshToken: CleanupRefreshTokenProvider,
     private readonly createAuthHistory: CreateAuthHistoryProvider,
     private readonly googleService: GoogleService,
     private readonly redisService: RedisService,
-    private readonly findPermissionKeys: FindPermissionKeysByRoleProvider,
+    private readonly permissionService: PermissionService,
     private readonly newDeviceNotification: NewDeviceNotificationProvider,
-    private readonly auditLog: AuditLogProvider,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
   /**
@@ -64,18 +65,18 @@ export class GoogleSigninProvider {
    * @throws {UnauthorizedException} When the id token is invalid or the account is locked/inactive.
    * @throws {NotFoundException} When the default `User` role is missing from the database.
    */
+  @SystemLog(ModuleName.Auth)
   async execute(dto: GoogleSigninDto) {
-    const ip = this.request.ip ?? this.request.socket?.remoteAddress ?? null;
-    const userAgent = this.request.headers['user-agent'] ?? null;
+    const ip = clientIp(this.request);
+    const userAgent = clientAgent(this.request);
 
     let googlePayload: Awaited<ReturnType<typeof this.googleService.verifyIdToken>>;
     try {
       googlePayload = await this.googleService.verifyIdToken({ idToken: dto.idToken });
     } catch {
-      this.auditLog.log({
-        event: SecurityAuditEvent.SigninFailure,
-        ip,
-        userAgent,
+      this.activityLog.logUser({
+        action: AuthAction.GoogleSigninFailed,
+        status: LogStatus.Failed,
         metadata: { reason: 'invalid-google-token' },
       });
       await this.errorResponse.unauthorized({
@@ -89,7 +90,7 @@ export class GoogleSigninProvider {
 
     if (!user) {
       const { role } = await this.roleService.findOne({ name: UserRole.User, isDeleted: false });
-      user = await this.userService.create({
+      ({ user } = await this.userService.create({
         name: googlePayload.name,
         email: googlePayload.email,
         googleId: googlePayload.sub,
@@ -97,7 +98,7 @@ export class GoogleSigninProvider {
         roleId: role.id,
         emailVerified: true,
         emailVerifiedAt: new Date(),
-      } as Partial<User>);
+      } as Partial<User>));
     } else {
       if (user.isDeleted) {
         await this.errorResponse.unauthorized({ module: ModuleName.Auth, key: 'user-archive' });
@@ -113,18 +114,16 @@ export class GoogleSigninProvider {
     const familyId = getDeviceFingerprint(this.request);
     const sessionId = this.hashService.generateToken(8);
 
-    // Mirror the email/password sign-in flow: clear stale Redis sessions for
-    // this device then revoke the corresponding DB tokens.
     const staleKeys = await this.redisService.keys(`auth:${user.id}:${familyId}:*`);
     await Promise.all(staleKeys.map((k) => this.redisService.del(k)));
 
     await this.revokeRefreshToken.execute({ userId: user.id, familyId }, { reason: 'signin-replaced' });
+    await this.createAuthHistory.logoutByFamily(user.id, familyId);
 
-    const permissions = user.roleId
-      ? await this.findPermissionKeys.execute({ roleId: user.roleId })
-      : [];
+    const { permissions } = await this.permissionService.findPermissionKeys(user.roleId);
 
     const firstIssuedAt = Date.now();
+    const refreshTtl = this.jwtService.getRefreshTtl(false);
 
     const jwtPayload: JwtPayload = {
       sub: user.id,
@@ -137,14 +136,8 @@ export class GoogleSigninProvider {
       firstIssuedAt,
     };
 
-    const accessToken = this.jwtService.sign(jwtPayload, {
-      secret: this.configService.jwt.accessSecret,
-      expiresIn: this.configService.jwt.accessTokenExpiredIn,
-    });
-    const refreshToken = this.jwtService.sign(jwtPayload, {
-      secret: this.configService.jwt.refreshSecret,
-      expiresIn: this.configService.jwt.refreshTokenExpiredIn,
-    });
+    const accessToken = this.jwtService.signAccessToken(jwtPayload);
+    const refreshToken = this.jwtService.signRefreshToken(jwtPayload);
 
     await this.createRefreshToken.execute({
       token: refreshToken,
@@ -158,7 +151,7 @@ export class GoogleSigninProvider {
       familyId,
       email: user.email,
       name: user.name,
-      ip: ip || null,
+      ip,
       userAgent: userAgent || null,
     });
 
@@ -166,25 +159,24 @@ export class GoogleSigninProvider {
     await this.redisService.hmset(redisKey, {
       accessToken,
       refreshToken,
-      ip: ip ?? '',
-      userAgent: userAgent ?? '',
+      ip,
+      userAgent,
       createdAt: new Date().toISOString(),
     });
-    await this.redisService.expire(redisKey, this.configService.jwt.refreshTokenExpiredIn);
+    await this.redisService.expire(redisKey, refreshTtl);
 
     await this.createAuthHistory.execute({
       userId: user.id,
       sessionId,
       familyId,
       loggedInAt: new Date(),
-      expiredAt: new Date(Date.now() + this.configService.jwt.refreshTokenExpiredIn * 1000),
+      expiredAt: new Date(Date.now() + refreshTtl * 1000),
     });
 
-    this.auditLog.log({
-      event: SecurityAuditEvent.SigninSuccess,
+    this.activityLog.logUser({
+      action: AuthAction.GoogleSigninSuccess,
       userId: user.id,
-      ip,
-      userAgent,
+      metadata: { email: user.email },
     });
 
     return { user, token: { accessToken, refreshToken } };
